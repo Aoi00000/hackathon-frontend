@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { itemApi, meApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Item, ItemStatus } from '../types';
-import { normalizeImageUrl, statusLabel } from '../utils';
+import { formatYen, normalizeImageUrl, statusLabel } from '../utils';
 
 const categories = ['', 'ファッション', 'ガジェット', '本・教材', '家具', 'その他'];
 const conditions = ['', '新品・未使用', '未使用に近い', '目立った傷や汚れなし', 'やや傷や汚れあり', '全体的に状態が悪い'];
@@ -60,7 +60,7 @@ export function ItemListPage() {
       </form>
       <div className="saveSearchRow"><input value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="検索条件名" /><button type="button" onClick={saveSearch}>検索条件を保存</button></div>
       {message && <p className="success">{message}</p>}{error && <p className="error">{error}</p>}
-      <div className="grid">{items.map((item) => <Link key={item.id} className="itemCard" to={`/items/${item.id}`}>{item.imageUrl ? <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} onError={(e) => { e.currentTarget.style.display = 'none'; }} /> : <div className="noImage">No Image</div>}<div className="itemBody"><span className="productCode">{item.productCode}</span><h2>{item.title}</h2><p>{item.category} / {item.conditionText}</p><p className="muted">{item.size || '-'} / {item.color || '-'}</p><strong>¥{item.priceYen.toLocaleString()}</strong><span className={`badge ${item.status}`}>{statusLabel(item.status)}</span><span className="muted">チェック {item.checklistCount}</span></div></Link>)}</div>
+      <div className="grid">{items.map((item) => <Link key={item.id} className="itemCard" to={`/items/${item.id}`}>{item.imageUrl ? <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} onError={(e) => { e.currentTarget.style.display = 'none'; }} /> : <div className="noImage">No Image</div>}<div className="itemBody"><span className="productCode">{item.productCode}</span><h2>{item.title}</h2><p>{item.category} / {item.conditionText}</p><p className="muted">{item.size || '-'} / {item.color || '-'}</p><strong>{formatYen(item.priceYen)}</strong><span className={`badge ${item.status}`}>{statusLabel(item.status)}</span><span className="muted">チェック {item.checklistCount}</span></div></Link>)}</div>
     </section>
   );
 }

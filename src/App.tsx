@@ -1,6 +1,7 @@
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from './context/AuthContext';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useI18n } from './i18n';
 import { ChecklistPage } from './pages/ChecklistPage';
 import { CreateItemPage } from './pages/CreateItemPage';
@@ -16,6 +17,7 @@ import { RegisterPage } from './pages/RegisterPage';
 export function App() {
   const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { lang, setLang, t } = useI18n();
 
   function logoutAndGoHome() {
@@ -24,7 +26,7 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  if (isLoading) return <main className="container">読み込み中...</main>;
+  if (isLoading) return <main className="container">{t('loading')}</main>;
 
   return (
     <>
@@ -62,18 +64,20 @@ export function App() {
       </header>
 
       <main className="container">
-        <Routes>
-          <Route path="/" element={<ItemListPage />} />
-          <Route path="/items/new" element={user ? <CreateItemPage /> : <Navigate to="/login" />} />
-          <Route path="/items/:id" element={<ItemDetailPage />} />
-          <Route path="/items/:id/purchase" element={user ? <PurchaseFlowPage /> : <Navigate to="/login" />} />
-          <Route path="/my/items" element={user ? <MyItemsPage /> : <Navigate to="/login" />} />
-          <Route path="/my/purchases" element={user ? <PurchaseHistoryPage /> : <Navigate to="/login" />} />
-          <Route path="/my/checklist" element={user ? <ChecklistPage /> : <Navigate to="/login" />} />
-          <Route path="/my" element={user ? <MyPage /> : <Navigate to="/login" />} />
-          <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-          <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage />} />
-        </Routes>
+        <ErrorBoundary key={location.pathname}>
+          <Routes>
+            <Route path="/" element={<ItemListPage />} />
+            <Route path="/items/new" element={user ? <CreateItemPage /> : <Navigate to="/login" />} />
+            <Route path="/items/:id" element={<ItemDetailPage />} />
+            <Route path="/items/:id/purchase" element={user ? <PurchaseFlowPage /> : <Navigate to="/login" />} />
+            <Route path="/my/items" element={user ? <MyItemsPage /> : <Navigate to="/login" />} />
+            <Route path="/my/purchases" element={user ? <PurchaseHistoryPage /> : <Navigate to="/login" />} />
+            <Route path="/my/checklist" element={user ? <ChecklistPage /> : <Navigate to="/login" />} />
+            <Route path="/my" element={user ? <MyPage /> : <Navigate to="/login" />} />
+            <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
+            <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </>
   );

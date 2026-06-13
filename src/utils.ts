@@ -1,10 +1,24 @@
-export function formatDate(value?: string): string {
+export function formatDate(value?: string | null): string {
   if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
   return new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo',
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value));
+  }).format(date);
+}
+
+export function safeNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+export function formatYen(value: unknown): string {
+  return `¥${safeNumber(value).toLocaleString('ja-JP')}`;
+}
+
+export function formatCoins(value: unknown): string {
+  return `${safeNumber(value).toLocaleString('ja-JP')} コイン`;
 }
 
 export function statusLabel(status: string): string {

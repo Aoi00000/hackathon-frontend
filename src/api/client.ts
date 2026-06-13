@@ -3,6 +3,10 @@ import type { AITextResponse, AuthResponse, BlockedUser, ChecklistStatus, Item, 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const tokenKey = 'hackathon_token';
 
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function setToken(token: string): void { localStorage.setItem(tokenKey, token); }
 export function getToken(): string | null { return localStorage.getItem(tokenKey); }
 export function clearToken(): void { localStorage.removeItem(tokenKey); }
@@ -43,7 +47,7 @@ function toQuery(params: ItemSearchParams): string {
 }
 
 export const itemApi = {
-  list: (params: ItemSearchParams) => request<Item[]>(`/api/items${toQuery(params)}`),
+  list: async (params: ItemSearchParams) => asArray(await request<Item[]>(`/api/items${toQuery(params)}`)),
   get: (id: number) => request<Item>(`/api/items/${id}`),
   create: (payload: Partial<Item> & { title: string; description: string; category: string; conditionText: string; priceYen: number; imageUrl: string }) => request<Item>('/api/items', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id: number, payload: Partial<Item> & { title: string; description: string; category: string; conditionText: string; priceYen: number; imageUrl: string }) => request<Item>(`/api/items/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
@@ -55,14 +59,14 @@ export const itemApi = {
 };
 
 export const meApi = {
-  items: () => request<Item[]>('/api/me/items'),
-  purchases: () => request<PurchaseHistory[]>('/api/me/purchases'),
-  checklist: () => request<Item[]>('/api/me/checklist'),
-  notifications: () => request<Notification[]>('/api/me/notifications'),
-  savedSearches: () => request<SavedSearch[]>('/api/me/saved-searches'),
+  items: async () => asArray(await request<Item[]>('/api/me/items')),
+  purchases: async () => asArray(await request<PurchaseHistory[]>('/api/me/purchases')),
+  checklist: async () => asArray(await request<Item[]>('/api/me/checklist')),
+  notifications: async () => asArray(await request<Notification[]>('/api/me/notifications')),
+  savedSearches: async () => asArray(await request<SavedSearch[]>('/api/me/saved-searches')),
   saveSearch: (name: string, queryJson: string) => request<SavedSearch>('/api/me/saved-searches', { method: 'POST', body: JSON.stringify({ name, queryJson }) }),
   deleteSavedSearch: (id: number) => request<{ ok: boolean }>(`/api/me/saved-searches/${id}`, { method: 'DELETE' }),
-  blocks: () => request<BlockedUser[]>('/api/me/blocks'),
+  blocks: async () => asArray(await request<BlockedUser[]>('/api/me/blocks')),
   block: (userId: number) => request<{ ok: boolean }>('/api/me/blocks', { method: 'POST', body: JSON.stringify({ userId }) }),
   unblock: (userId: number) => request<{ ok: boolean }>(`/api/me/blocks/${userId}`, { method: 'DELETE' }),
   support: (body: string) => request<SupportMessage>('/api/me/support-messages', { method: 'POST', body: JSON.stringify({ body }) }),
@@ -76,9 +80,9 @@ export const checklistApi = {
 };
 
 export const messageApi = {
-  list: (itemId: number) => request<Message[]>(`/api/items/${itemId}/messages`),
+  list: async (itemId: number) => asArray(await request<Message[]>(`/api/items/${itemId}/messages`)),
   send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
-  listPrivate: (itemId: number) => request<PrivateMessage[]>(`/api/items/${itemId}/private-messages`),
+  listPrivate: async (itemId: number) => asArray(await request<PrivateMessage[]>(`/api/items/${itemId}/private-messages`)),
   sendPrivate: (itemId: number, body: string, receiverId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId }) }),
 };
 
