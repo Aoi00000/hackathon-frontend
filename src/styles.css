@@ -228,3 +228,182 @@ textarea {
   border-radius: 14px;
   background: #eff6ff;
 }
+
+/* ------------------------------------------------------------
+   追加機能用スタイル
+   ------------------------------------------------------------ */
+.header {
+  flex-wrap: wrap;
+}
+
+.nav {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.userArea {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-left: 14px;
+  margin-left: 4px;
+  border-left: 1px solid #e2e8f0;
+}
+
+.userName {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 800;
+}
+
+.stack {
+  display: grid;
+  gap: 18px;
+}
+
+.pageTitleRow,
+.historyHeader,
+.messageHeader,
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.actions.vertical {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.button {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  text-align: center;
+}
+
+.button.secondary,
+.secondaryButton {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.dangerButton {
+  background: #dc2626;
+}
+
+.checkedButton {
+  background: #16a34a;
+}
+
+.success {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+}
+
+.historyCard {
+  display: grid;
+  gap: 12px;
+}
+
+.meta.compact {
+  grid-template-columns: 90px 1fr;
+}
+
+.badge.available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.sold,
+.statusText.sold {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge.canceled,
+.statusText.canceled {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.statusText {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 900;
+}
+
+.ownerBadge,
+.sellerBadge {
+  display: inline-block;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.asArticle:hover {
+  transform: none;
+}
+
+.thread {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+
+.replies {
+  display: grid;
+  gap: 8px;
+  margin-left: 28px;
+}
+
+.replyMessage {
+  border-left: 4px solid #cbd5e1;
+}
+
+.sellerMessage {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.sellerName {
+  color: #b45309;
+}
+
+.replyForm,
+.commentForm {
+  margin-top: 8px;
+}
+
+.replyForm {
+  display: flex;
+  gap: 8px;
+  margin-left: 28px;
+}
+
+.replyForm input {
+  flex: 1;
+}

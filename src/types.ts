@@ -8,6 +8,8 @@ export type User = {
   createdAt: string;
 };
 
+export type ItemStatus = 'available' | 'sold' | 'canceled';
+
 export type Item = {
   id: number;
   sellerId: number;
@@ -18,7 +20,7 @@ export type Item = {
   conditionText: string;
   priceYen: number;
   imageUrl: string;
-  status: 'available' | 'sold';
+  status: ItemStatus;
   createdAt: string;
   updatedAt: string;
 };
@@ -26,12 +28,31 @@ export type Item = {
 export type Message = {
   id: number;
   itemId: number;
+  parentMessageId?: number;
   senderId: number;
   senderName: string;
   receiverId: number;
   receiverName: string;
   body: string;
+  isSeller: boolean;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type PurchaseHistory = {
+  purchaseId: number;
+  itemId: number;
+  sellerId: number;
+  sellerName: string;
+  title: string;
+  description: string;
+  category: string;
+  conditionText: string;
+  priceYen: number;
+  imageUrl: string;
+  status: ItemStatus;
+  purchasedAt: string;
+  updatedAt: string;
 };
 
 export type AuthResponse = {
@@ -41,4 +62,8 @@ export type AuthResponse = {
 
 export type AITextResponse = {
   text: string;
+};
+
+export type ChecklistStatus = {
+  checked: boolean;
 };

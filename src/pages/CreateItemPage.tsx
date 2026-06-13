@@ -11,13 +11,33 @@ export function CreateItemPage() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('ファッション');
   const [conditionText, setConditionText] = useState('目立った傷や汚れなし');
-  const [priceYen, setPriceYen] = useState(1000);
+  // 価格は数値ではなく文字列として管理します。
+  // こうすることで、入力欄を完全に空にでき、最後に0が残る問題を避けられます。
+  const [priceInput, setPriceInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [keywords, setKeywords] = useState('');
   const [description, setDescription] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+
+  function onPriceChange(value: string) {
+    // 価格は円単位の整数だけを扱うため、数字以外を取り除きます。
+    // input type=number ではなく text + inputMode=numeric にすることで、上下ボタンも消せます。
+    const digitsOnly = value.replace(/\D/g, '');
+    setPriceInput(digitsOnly);
+  }
+
+  function priceToNumber(): number | null {
+    if (priceInput.trim() === '') {
+      return null;
+    }
+    const price = Number(priceInput);
+    if (!Number.isInteger(price) || price <= 0) {
+      return null;
+    }
+    return price;
+  }
 
   async function generateDescription() {
     setError('');
@@ -42,8 +62,14 @@ export function CreateItemPage() {
     event.preventDefault();
     setError('');
 
+    const priceYen = priceToNumber();
+    if (priceYen === null) {
+      setError('価格(円)を1円以上の整数で入力してください');
+      return;
+    }
+
     try {
-      const item = await itemApi.create({
+      await itemApi.create({
         title,
         description,
         category,
@@ -51,7 +77,7 @@ export function CreateItemPage() {
         priceYen,
         imageUrl,
       });
-      navigate(`/items/${item.id}`);
+      navigate('/my/items?created=1');
     } catch (e) {
       setError(e instanceof Error ? e.message : '出品に失敗しました');
     }
@@ -90,8 +116,14 @@ export function CreateItemPage() {
         </label>
 
         <label>
-          価格
-          <input value={priceYen} onChange={(e) => setPriceYen(Number(e.target.value))} type="number" min={1} required />
+          価格(円)
+          <input
+            value={priceInput}
+            onChange={(e) => onPriceChange(e.target.value)}
+            inputMode="numeric"
+            placeholder="例: 500"
+            required
+          />
         </label>
 
         <label>
@@ -100,8 +132,8 @@ export function CreateItemPage() {
         </label>
 
         <label>
-          AIに伝えるメモ
-          <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="購入時期、サイズ感、注意点など" />
+          AIに伝えるメモについて(商品内容、購入時期、サイズ感、注意点など)
+          <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)} />
         </label>
 
         <button type="button" onClick={generateDescription} disabled={isGenerating || !title}>

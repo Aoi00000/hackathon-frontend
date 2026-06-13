@@ -1,4 +1,4 @@
-import type { AITextResponse, AuthResponse, Item, Message, User } from '../types';
+import type { AITextResponse, AuthResponse, ChecklistStatus, Item, Message, PurchaseHistory, User } from '../types';
 
 // import.meta.env.VITE_API_BASE_URL はViteが読み込む環境変数です。
 // 未設定ならローカルのGoサーバを使います。
@@ -29,12 +29,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
   // HeadersInit は Headers / 配列 / オブジェクトの union 型なので、
-  // headers.Authorization のように直接プロパティ代入すると型エラーになります。
   // new Headers(...) に正規化してから set すると、どの形式のheadersでも安全に扱えます。
   const headers = new Headers(options.headers);
-
-  // このアプリのAPIはJSONを送るため、共通で Content-Type を設定します。
-  // GETのときも付いていて実害は小さいですが、気になる場合はbodyがあるときだけ設定しても構いません。
   headers.set('Content-Type', 'application/json');
 
   if (token) {
@@ -42,19 +38,27 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_BASE_URL}${path}`;
 
-  const data = await response.json().catch(() => null);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    const message = data?.error ?? `API error: ${response.status}`;
-    throw new Error(message);
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const message = data?.error ?? `API error: ${response.status}`;
+      throw new Error(message);
+    }
+
+    return data as T;
+  } catch (error) {
+    // 開発中の切り分けをしやすくするため、失敗したURLとAPI_BASE_URLをConsoleに出します。
+    console.error('API request failed:', { url, API_BASE_URL, error });
+    throw error;
   }
-
-  return data as T;
 }
 
 // 認証API。
@@ -93,6 +97,24 @@ export const itemApi = {
       body: JSON.stringify(payload),
     }),
 
+  update: (id: number, payload: {
+    title: string;
+    description: string;
+    category: string;
+    conditionText: string;
+    priceYen: number;
+    imageUrl: string;
+  }) =>
+    request<Item>(`/api/items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  cancel: (id: number) =>
+    request<Item>(`/api/items/${id}/cancel`, {
+      method: 'POST',
+    }),
+
   purchase: (id: number) =>
     request<{ id: number }>(`/api/items/${id}/purchase`, {
       method: 'POST',
@@ -105,14 +127,38 @@ export const itemApi = {
     }),
 };
 
-// DM API。
+// マイページ系API。
+export const meApi = {
+  items: () => request<Item[]>('/api/me/items'),
+
+  purchases: () => request<PurchaseHistory[]>('/api/me/purchases'),
+
+  checklist: () => request<Item[]>('/api/me/checklist'),
+};
+
+// チェックリストAPI。
+export const checklistApi = {
+  status: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`),
+
+  add: (itemId: number) =>
+    request<ChecklistStatus>(`/api/items/${itemId}/checklist`, {
+      method: 'POST',
+    }),
+
+  remove: (itemId: number) =>
+    request<ChecklistStatus>(`/api/items/${itemId}/checklist`, {
+      method: 'DELETE',
+    }),
+};
+
+// コメントAPI。
 export const messageApi = {
   list: (itemId: number) => request<Message[]>(`/api/items/${itemId}/messages`),
 
-  send: (itemId: number, receiverId: number, body: string) =>
+  send: (itemId: number, body: string, parentMessageId?: number) =>
     request<Message>(`/api/items/${itemId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ receiverId, body }),
+      body: JSON.stringify({ body, parentMessageId }),
     }),
 };
 

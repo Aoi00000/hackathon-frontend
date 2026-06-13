@@ -4,6 +4,12 @@ import { Link } from 'react-router-dom';
 import { itemApi } from '../api/client';
 import type { Item } from '../types';
 
+function statusLabel(status: Item['status']): string {
+  if (status === 'sold') return '購入済み';
+  if (status === 'canceled') return '出品キャンセル';
+  return '販売中';
+}
+
 // ItemListPage は商品一覧・検索画面です。
 export function ItemListPage() {
   const [q, setQ] = useState('');
@@ -28,7 +34,7 @@ export function ItemListPage() {
     <section>
       <div className="hero">
         <h1>AIが出品と購入判断を支援する次世代フリマ</h1>
-        <p>商品説明の自動生成、商品Q&A、DMを備えたWebコース準拠のMVPです。</p>
+        <p>商品説明の自動生成、商品Q&A、コメント欄を備えたWebコース準拠のMVPです。</p>
       </div>
 
       <form
@@ -52,7 +58,7 @@ export function ItemListPage() {
               <h2>{item.title}</h2>
               <p>{item.category} / {item.conditionText}</p>
               <strong>¥{item.priceYen.toLocaleString()}</strong>
-              <span className={item.status === 'sold' ? 'badge sold' : 'badge'}>{item.status}</span>
+              <span className={`badge ${item.status}`}>{statusLabel(item.status)}</span>
             </div>
           </Link>
         ))}
