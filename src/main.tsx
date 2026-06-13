@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
+import { I18nProvider } from './i18n';
 import './styles.css';
 
 // Reactアプリのエントリーポイントです。
@@ -12,7 +13,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <I18nProvider>
+          <App />
+        </I18nProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

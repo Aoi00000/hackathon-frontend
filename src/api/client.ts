@@ -1,177 +1,87 @@
-import type { AITextResponse, AuthResponse, ChecklistStatus, Item, Message, PurchaseHistory, User } from '../types';
+import type { AITextResponse, AuthResponse, BlockedUser, ChecklistStatus, Item, Message, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
 
-// import.meta.env.VITE_API_BASE_URL はViteが読み込む環境変数です。
-// 未設定ならローカルのGoサーバを使います。
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
-
-// tokenKey はlocalStorageにJWTを保存するときのキーです。
-// 名前を定数化して、保存・取得・削除で文字列のズレが起きないようにします。
 const tokenKey = 'hackathon_token';
 
-// setToken はログイン成功時にJWTを保存します。
-export function setToken(token: string): void {
-  localStorage.setItem(tokenKey, token);
-}
+export function setToken(token: string): void { localStorage.setItem(tokenKey, token); }
+export function getToken(): string | null { return localStorage.getItem(tokenKey); }
+export function clearToken(): void { localStorage.removeItem(tokenKey); }
 
-// getToken はAPI呼び出し時にJWTを取り出します。
-export function getToken(): string | null {
-  return localStorage.getItem(tokenKey);
-}
-
-// clearToken はログアウト時にJWTを削除します。
-export function clearToken(): void {
-  localStorage.removeItem(tokenKey);
-}
-
-// request はfetchを薄く包んだ共通関数です。
-// JSON変換、Authorizationヘッダ、エラー処理を一箇所に集めます。
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-
-  // HeadersInit は Headers / 配列 / オブジェクトの union 型なので、
-  // new Headers(...) に正規化してから set すると、どの形式のheadersでも安全に扱えます。
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
-
-  if (token) {
-    // JWTをBearerトークンとして送信し、バックエンドの認証ミドルウェアで検証します。
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
+  const token = getToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   const url = `${API_BASE_URL}${path}`;
-
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
+    const response = await fetch(url, { ...options, headers });
     const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const message = data?.error ?? `API error: ${response.status}`;
-      throw new Error(message);
-    }
-
+    if (!response.ok) throw new Error(data?.error ?? `API error: ${response.status}`);
     return data as T;
   } catch (error) {
-    // 開発中の切り分けをしやすくするため、失敗したURLとAPI_BASE_URLをConsoleに出します。
     console.error('API request failed:', { url, API_BASE_URL, error });
     throw error;
   }
 }
 
-// 認証API。
 export const authApi = {
-  register: (payload: { name: string; email: string; password: string }) =>
-    request<AuthResponse>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  login: (payload: { email: string; password: string }) =>
-    request<AuthResponse>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
+  register: (payload: { name: string; email: string; password: string }) => request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  login: (payload: { email: string; password: string }) => request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request<User>('/api/me'),
+  updateMe: (payload: { shippingRegion: string; shippingAddress: string }) => request<User>('/api/me', { method: 'PUT', body: JSON.stringify(payload) }),
+  charge: (amount: number) => request<User>('/api/me/charge', { method: 'POST', body: JSON.stringify({ amount }) }),
 };
 
-// 商品API。
+export type ItemSearchParams = {
+  q?: string; category?: string; size?: string; color?: string; condition?: string; status?: string; minPrice?: string; maxPrice?: string; tag?: string; sort?: string;
+};
+function toQuery(params: ItemSearchParams): string {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v) sp.set(k, v); });
+  const query = sp.toString();
+  return query ? `?${query}` : '';
+}
+
 export const itemApi = {
-  list: (q: string) => request<Item[]>(`/api/items?q=${encodeURIComponent(q)}`),
-
+  list: (params: ItemSearchParams) => request<Item[]>(`/api/items${toQuery(params)}`),
   get: (id: number) => request<Item>(`/api/items/${id}`),
-
-  create: (payload: {
-    title: string;
-    description: string;
-    category: string;
-    conditionText: string;
-    priceYen: number;
-    imageUrl: string;
-  }) =>
-    request<Item>('/api/items', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  update: (id: number, payload: {
-    title: string;
-    description: string;
-    category: string;
-    conditionText: string;
-    priceYen: number;
-    imageUrl: string;
-  }) =>
-    request<Item>(`/api/items/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  cancel: (id: number) =>
-    request<Item>(`/api/items/${id}/cancel`, {
-      method: 'POST',
-    }),
-
-  purchase: (id: number) =>
-    request<{ id: number }>(`/api/items/${id}/purchase`, {
-      method: 'POST',
-    }),
-
-  ask: (id: number, question: string) =>
-    request<AITextResponse>(`/api/items/${id}/ask`, {
-      method: 'POST',
-      body: JSON.stringify({ question }),
-    }),
+  create: (payload: Partial<Item> & { title: string; description: string; category: string; conditionText: string; priceYen: number; imageUrl: string }) => request<Item>('/api/items', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id: number, payload: Partial<Item> & { title: string; description: string; category: string; conditionText: string; priceYen: number; imageUrl: string }) => request<Item>(`/api/items/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  cancel: (id: number) => request<Item>(`/api/items/${id}/cancel`, { method: 'POST' }),
+  purchase: (id: number, deliveryAddress: string) => request<{ id: number }>(`/api/items/${id}/purchase`, { method: 'POST', body: JSON.stringify({ deliveryAddress }) }),
+  ship: (id: number) => request<{ id: number }>(`/api/items/${id}/ship`, { method: 'POST' }),
+  complete: (id: number, rating: number, ratingComment: string) => request<{ id: number }>(`/api/items/${id}/complete`, { method: 'POST', body: JSON.stringify({ rating, ratingComment }) }),
+  ask: (id: number, question: string) => request<AITextResponse>(`/api/items/${id}/ask`, { method: 'POST', body: JSON.stringify({ question }) }),
 };
 
-// マイページ系API。
 export const meApi = {
   items: () => request<Item[]>('/api/me/items'),
-
   purchases: () => request<PurchaseHistory[]>('/api/me/purchases'),
-
   checklist: () => request<Item[]>('/api/me/checklist'),
+  notifications: () => request<Notification[]>('/api/me/notifications'),
+  savedSearches: () => request<SavedSearch[]>('/api/me/saved-searches'),
+  saveSearch: (name: string, queryJson: string) => request<SavedSearch>('/api/me/saved-searches', { method: 'POST', body: JSON.stringify({ name, queryJson }) }),
+  deleteSavedSearch: (id: number) => request<{ ok: boolean }>(`/api/me/saved-searches/${id}`, { method: 'DELETE' }),
+  blocks: () => request<BlockedUser[]>('/api/me/blocks'),
+  block: (userId: number) => request<{ ok: boolean }>('/api/me/blocks', { method: 'POST', body: JSON.stringify({ userId }) }),
+  unblock: (userId: number) => request<{ ok: boolean }>(`/api/me/blocks/${userId}`, { method: 'DELETE' }),
+  support: (body: string) => request<SupportMessage>('/api/me/support-messages', { method: 'POST', body: JSON.stringify({ body }) }),
+  recommendations: () => request<RecommendationResponse>('/api/me/recommendations'),
 };
 
-// チェックリストAPI。
 export const checklistApi = {
   status: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`),
-
-  add: (itemId: number) =>
-    request<ChecklistStatus>(`/api/items/${itemId}/checklist`, {
-      method: 'POST',
-    }),
-
-  remove: (itemId: number) =>
-    request<ChecklistStatus>(`/api/items/${itemId}/checklist`, {
-      method: 'DELETE',
-    }),
+  add: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'POST' }),
+  remove: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'DELETE' }),
 };
 
-// コメントAPI。
 export const messageApi = {
   list: (itemId: number) => request<Message[]>(`/api/items/${itemId}/messages`),
-
-  send: (itemId: number, body: string, parentMessageId?: number) =>
-    request<Message>(`/api/items/${itemId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ body, parentMessageId }),
-    }),
+  send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
+  listPrivate: (itemId: number) => request<PrivateMessage[]>(`/api/items/${itemId}/private-messages`),
+  sendPrivate: (itemId: number, body: string, receiverId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId }) }),
 };
 
-// AI API。
 export const aiApi = {
-  generateDescription: (payload: {
-    title: string;
-    category: string;
-    conditionText: string;
-    keywords: string;
-  }) =>
-    request<AITextResponse>('/api/ai/generate-description', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
 };
