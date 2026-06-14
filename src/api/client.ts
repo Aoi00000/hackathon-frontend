@@ -1,4 +1,4 @@
-import type { AITextResponse, AuthResponse, BlockedUser, ChecklistStatus, Item, Message, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
+import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const tokenKey = 'hackathon_token';
@@ -7,9 +7,18 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
-export function setToken(token: string): void { localStorage.setItem(tokenKey, token); }
-export function getToken(): string | null { return localStorage.getItem(tokenKey); }
-export function clearToken(): void { localStorage.removeItem(tokenKey); }
+// 認証トークンは、古い実装では localStorage に保存していました。
+// そのため、以前のテストで作った user1 のJWTが残っていると、
+// ブラウザを開いた直後に user1 として自動ログインしてしまいます。
+// 今回は sessionStorage に変更し、ブラウザセッションを閉じればログイン状態が残らないようにします。
+// さらに、初回読み込み時に古い localStorage のトークンを削除します。
+if (localStorage.getItem(tokenKey)) {
+  localStorage.removeItem(tokenKey);
+}
+
+export function setToken(token: string): void { sessionStorage.setItem(tokenKey, token); }
+export function getToken(): string | null { return sessionStorage.getItem(tokenKey); }
+export function clearToken(): void { sessionStorage.removeItem(tokenKey); localStorage.removeItem(tokenKey); }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -37,7 +46,17 @@ export const authApi = {
 };
 
 export type ItemSearchParams = {
-  q?: string; category?: string; size?: string; color?: string; condition?: string; status?: string; minPrice?: string; maxPrice?: string; tag?: string; sort?: string;
+  q?: string;
+  category?: string;
+  size?: string;
+  color?: string;
+  condition?: string;
+  status?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  tag?: string;
+  deliveryWithin?: string;
+  sort?: string;
 };
 function toQuery(params: ItemSearchParams): string {
   const sp = new URLSearchParams();
@@ -56,6 +75,7 @@ export const itemApi = {
   ship: (id: number) => request<{ id: number }>(`/api/items/${id}/ship`, { method: 'POST' }),
   complete: (id: number, rating: number, ratingComment: string) => request<{ id: number }>(`/api/items/${id}/complete`, { method: 'POST', body: JSON.stringify({ rating, ratingComment }) }),
   ask: (id: number, question: string) => request<AITextResponse>(`/api/items/${id}/ask`, { method: 'POST', body: JSON.stringify({ question }) }),
+  analysis: (id: number) => request<ItemAIAnalysis>(`/api/items/${id}/analysis`),
 };
 
 export const meApi = {
@@ -63,14 +83,25 @@ export const meApi = {
   purchases: async () => asArray(await request<PurchaseHistory[]>('/api/me/purchases')),
   checklist: async () => asArray(await request<Item[]>('/api/me/checklist')),
   notifications: async () => asArray(await request<Notification[]>('/api/me/notifications')),
+  readNotification: (id: number) => request<Notification>(`/api/me/notifications/${id}/read`, { method: 'POST' }),
   savedSearches: async () => asArray(await request<SavedSearch[]>('/api/me/saved-searches')),
   saveSearch: (name: string, queryJson: string) => request<SavedSearch>('/api/me/saved-searches', { method: 'POST', body: JSON.stringify({ name, queryJson }) }),
   deleteSavedSearch: (id: number) => request<{ ok: boolean }>(`/api/me/saved-searches/${id}`, { method: 'DELETE' }),
   blocks: async () => asArray(await request<BlockedUser[]>('/api/me/blocks')),
   block: (userId: number) => request<{ ok: boolean }>('/api/me/blocks', { method: 'POST', body: JSON.stringify({ userId }) }),
   unblock: (userId: number) => request<{ ok: boolean }>(`/api/me/blocks/${userId}`, { method: 'DELETE' }),
-  support: (body: string) => request<SupportMessage>('/api/me/support-messages', { method: 'POST', body: JSON.stringify({ body }) }),
-  recommendations: () => request<RecommendationResponse>('/api/me/recommendations'),
+  supportMessages: async () => asArray(await request<SupportMessage[]>('/api/me/support-messages')),
+  support: (subject: string, body: string) => request<SupportMessage>('/api/me/support-messages', { method: 'POST', body: JSON.stringify({ subject, body }) }),
+  // API側でおすすめ対象が0件の場合、Goのnil sliceがJSON nullになることがあります。
+  // そのままReact側で .length や .map を呼ぶと画面全体が落ちるため、
+  // ここで必ず items を配列へ正規化します。
+  recommendations: async () => {
+    const data = await request<RecommendationResponse>('/api/me/recommendations');
+    return {
+      reason: data?.reason ?? '現在表示できるおすすめ商品はありません。',
+      items: asArray(data?.items),
+    };
+  },
 };
 
 export const checklistApi = {
@@ -83,9 +114,11 @@ export const messageApi = {
   list: async (itemId: number) => asArray(await request<Message[]>(`/api/items/${itemId}/messages`)),
   send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
   listPrivate: async (itemId: number) => asArray(await request<PrivateMessage[]>(`/api/items/${itemId}/private-messages`)),
-  sendPrivate: (itemId: number, body: string, receiverId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId }) }),
+  sendPrivate: (itemId: number, body: string, receiverId?: number, parentMessageId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId, parentMessageId }) }),
 };
 
 export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
+  translate: (text: string) => request<AITextResponse>('/api/ai/translate', { method: 'POST', body: JSON.stringify({ text }) }),
+  categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),
 };

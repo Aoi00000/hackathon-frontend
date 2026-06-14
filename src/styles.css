@@ -444,3 +444,817 @@ textarea {
   .purchaseLayout { grid-template-columns: 1fr; }
   .header { align-items: flex-start; }
 }
+
+/* 検索ボタンと検索条件保存ボタンを同じ行に置くための行。
+   ユーザー要望に合わせて、左側に検索条件保存、右側に検索を配置します。 */
+.searchActionRow {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.saveSearchInline {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: min(100%, 360px);
+}
+
+.saveSearchInline input {
+  flex: 1;
+}
+
+.emptyState {
+  margin: 18px 0;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+/* ------------------------------------------------------------
+   今回の追加修正用スタイル
+   ------------------------------------------------------------ */
+.requiredMark {
+  color: #dc2626;
+  font-weight: 1000;
+  margin-left: 2px;
+}
+
+.labelText small {
+  color: #64748b;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.imagePreview {
+  width: 220px;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.loadingInline {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.notificationNav {
+  position: relative;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.bellIcon {
+  font-size: 15px;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: -10px;
+  right: -14px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  font-size: 11px;
+  font-weight: 1000;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px white;
+}
+
+.notificationCard {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.notificationTargetButton {
+  background: #f97316;
+  color: white;
+  white-space: nowrap;
+}
+
+.savedSearchApplyBox {
+  margin: 16px 0 20px;
+}
+
+.savedSearchList {
+  display: grid;
+  gap: 12px;
+}
+
+.savedSearchList.compactList {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.savedSearchCard {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.conditionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conditionChips span {
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.buttonLike {
+  width: fit-content;
+}
+
+.supportThread {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.supportThread h3 {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .notificationCard {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* ------------------------------------------------------------
+   商品一覧をAmazon風の左サイドバー + 商品カード一覧にするための追加スタイル
+   ------------------------------------------------------------ */
+.compactHero {
+  padding: 24px;
+}
+
+.marketLayout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.filterSidebar {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+}
+
+.sidebarSearchForm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.fieldBlock,
+.priceFilterPair label,
+.inlineSearch label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.fieldBlock span,
+.priceFilterPair span,
+.inlineSearch span {
+  color: #334155;
+  font-size: 13px;
+}
+
+.filterDetails {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}
+
+.filterDetails summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.checkboxList {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.checkboxOption {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.checkboxOption input {
+  width: auto;
+}
+
+.priceFilterPair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.marketMain {
+  min-width: 0;
+}
+
+.denseGrid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+.likeCount,
+.likeSummary {
+  color: #e11d48;
+  font-weight: 1000;
+}
+
+.likeSummary {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #ffe4e6;
+}
+
+.saveSearchCompact {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.saveSearchCompact input {
+  flex: 1;
+}
+
+.inlineSearch {
+  padding: 16px;
+}
+
+.purchaseStatusBadge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 1000;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.purchaseStatusBadge.shipped,
+.statusText.shipped {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.purchaseStatusBadge.completed,
+.statusText.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.unreadNotification {
+  border-color: #fca5a5;
+  background: #fff7f7;
+}
+
+.readNotification {
+  opacity: 0.78;
+}
+
+.unreadBadge,
+.readBadge {
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.unreadBadge {
+  background: #dc2626;
+  color: white;
+}
+
+.readBadge {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.stars {
+  color: #f59e0b;
+  letter-spacing: 1px;
+  font-weight: 1000;
+}
+
+@media (max-width: 900px) {
+  .marketLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .filterSidebar {
+    position: static;
+  }
+}
+
+/* ------------------------------------------------------------
+   Amazon風の商品一覧レイアウトの再調整
+   ------------------------------------------------------------ */
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* 商品一覧だけは通常ページより横幅を広く使い、左サイドバーを画面端に近づけます。 */
+.marketPage {
+  width: min(1480px, calc(100vw - 24px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.marketPage .compactHero {
+  max-width: 960px;
+  margin: 0 auto 18px;
+  padding: 24px;
+}
+
+.marketLayout {
+  grid-template-columns: 218px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.filterSidebar {
+  top: 76px;
+}
+
+.sidebarSearchForm {
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.sidebarSearchForm input,
+.sidebarSearchForm select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.fieldBlock,
+.priceFilterPair label,
+.inlineSearch label {
+  gap: 4px;
+}
+
+.fieldBlock span,
+.priceFilterPair span,
+.inlineSearch span {
+  font-size: 12px;
+}
+
+.filterDetails {
+  padding-top: 8px;
+}
+
+.filterDetails summary {
+  list-style-position: outside;
+  font-size: 14px;
+}
+
+.checkboxList {
+  gap: 5px;
+  margin-top: 7px;
+  max-height: 150px;
+}
+
+.checkboxOption {
+  font-size: 13px;
+}
+
+.priceFilterPair {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.sidebarSaveBox {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sidebarSaveBox strong {
+  font-size: 13px;
+  color: #334155;
+}
+
+.sidebarSavedSearches {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.savedSearchMini {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #1e293b;
+  text-align: left;
+}
+
+.savedSearchMini small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.denseGrid {
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 12px;
+}
+
+.compactItemCard {
+  border-radius: 10px;
+}
+
+.compactItemCard img,
+.compactItemCard .noImage {
+  height: 118px;
+}
+
+.compactItemCard .itemBody {
+  padding: 10px;
+  gap: 5px;
+}
+
+.compactItemCard .itemBody h2 {
+  font-size: 14px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.compactItemCard .itemBody p,
+.compactItemCard .itemBody strong,
+.compactItemCard .badge,
+.compactItemCard .likeCount {
+  font-size: 12px;
+}
+
+.compactItemCard .productCode {
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .marketPage {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .marketLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .filterSidebar {
+    position: static;
+  }
+}
+
+/* ------------------------------------------------------------
+   最終UI調整: Amazon風に画面左端へ寄せた検索サイドバー
+   ------------------------------------------------------------ */
+.container:has(.marketPage) {
+  width: calc(100vw - 16px);
+  max-width: none;
+  margin: 16px 0 24px 8px;
+}
+
+.marketPage {
+  width: 100%;
+  margin: 0;
+  transform: none;
+}
+
+.marketPage .compactHero {
+  max-width: none;
+  margin: 0 8px 16px 220px;
+  padding: 20px 24px;
+}
+
+.marketLayout {
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.filterSidebar {
+  width: 190px;
+  top: 74px;
+}
+
+.sidebarSearchForm {
+  padding: 10px;
+  gap: 7px;
+  border-radius: 8px;
+}
+
+.sidebarSearchForm input,
+.sidebarSearchForm select {
+  min-width: 0;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.filterDetails summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filterDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.filterDetails summary::before {
+  content: '▶';
+  flex: 0 0 auto;
+  width: 12px;
+  color: #334155;
+  font-size: 10px;
+  transform: translateY(-1px);
+}
+
+.filterDetails[open] summary::before {
+  content: '▼';
+}
+
+.checkboxList {
+  margin-top: 7px;
+  padding-left: 0;
+  max-height: 138px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.checkboxOption {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  justify-content: start;
+  line-height: 1.35;
+}
+
+.checkboxOption input {
+  width: 13px;
+  height: 13px;
+  margin: 2px 0 0;
+  flex: none;
+}
+
+.checkboxOption span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.denseGrid {
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  gap: 10px;
+}
+
+.compactItemCard img,
+.compactItemCard .noImage {
+  height: 98px;
+}
+
+.compactItemCard .itemBody {
+  padding: 8px;
+  gap: 4px;
+}
+
+.compactItemCard .itemBody h2 {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.compactItemCard .itemBody p,
+.compactItemCard .itemBody strong,
+.compactItemCard .badge,
+.compactItemCard .likeCount {
+  font-size: 11px;
+}
+
+.blockButton {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.blockedButton {
+  background: #ef4444;
+  color: white;
+}
+
+.aiAssistCard {
+  margin: 12px 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  padding: 12px 14px;
+}
+
+.aiAssistCard ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 900px) {
+  .container:has(.marketPage) {
+    width: min(100%, calc(100vw - 24px));
+    margin: 16px auto;
+  }
+  .marketPage .compactHero {
+    margin: 0 0 16px;
+  }
+}
+
+/* 多言語切り替え */
+.languageSelect {
+  width: auto;
+  min-width: 104px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+/* AI / レコメンド表示 */
+.recommendationStrip {
+  margin-bottom: 12px;
+  padding: 14px;
+}
+
+.miniRecommendationGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.miniRecCard {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.analysisCard {
+  background: #f8fbff;
+}
+
+.analysisGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 14px;
+}
+
+.analysisGrid h3 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.aiTipsBox {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.aiTipsBox ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+/* レスポンシブ対応。PCではAmazon風の左サイドバー、タブレット以下では上部に縦積みします。 */
+@media (max-width: 760px) {
+  .header {
+    align-items: flex-start;
+  }
+
+  .nav {
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .marketLayout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .filterSidebar {
+    position: static;
+    width: auto;
+  }
+
+  .sidebarSearchForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sidebarSearchForm .fieldBlock,
+  .filterDetails,
+  .priceFilterPair,
+  .sidebarSaveBox,
+  .savedSearchDetails {
+    grid-column: 1 / -1;
+  }
+
+  .denseGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    width: calc(100% - 20px);
+    margin: 12px auto;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .meta {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebarSearchForm {
+    grid-template-columns: 1fr;
+  }
+
+  .denseGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compactItemCard img,
+  .compactItemCard .noImage {
+    height: 88px;
+  }
+}
