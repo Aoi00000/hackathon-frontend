@@ -9,6 +9,10 @@ export type User = {
   transactionCount: number;
   shippingRegion: string;
   shippingAddress: string;
+  monthlySpendCoins: number;
+  totalSpendCoins: number;
+  monthlySalesCoins: number;
+  totalSalesCoins: number;
   createdAt: string;
 };
 
@@ -105,7 +109,23 @@ export type PurchaseHistory = {
 };
 
 export type AuthResponse = { token: string; user: User };
-export type AITextResponse = { text: string };
+export type AITextResponse = { text: string; notice?: string; usedFallback?: boolean };
+export type NaturalSearchResponse = {
+  q?: string;
+  category?: string;
+  size?: string;
+  color?: string;
+  condition?: string;
+  status?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  tag?: string;
+  deliveryWithin?: string;
+  sort?: string;
+  explanation?: string;
+  notice?: string;
+  usedFallback?: boolean;
+};
 export type ItemAIAnalysis = {
   riskPoints: string[];
   suggestedQuestions: string[];

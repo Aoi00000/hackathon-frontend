@@ -4,7 +4,6 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-r
 import { meApi } from './api/client';
 import { useAuth } from './context/AuthContext';
 import { ErrorBoundary } from './ErrorBoundary';
-import { useI18n } from './i18n';
 import { ChecklistPage } from './pages/ChecklistPage';
 import { CreateItemPage } from './pages/CreateItemPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
@@ -18,14 +17,19 @@ import { PurchaseHistoryPage } from './pages/PurchaseHistoryPage';
 import { RegisterPage } from './pages/RegisterPage';
 
 export function App() {
+  // ログイン中ユーザーとログアウト処理を認証コンテキストから取得します。
   const { user, logout, isLoading } = useAuth();
+  // 画面遷移用の関数です。ログアウト後や通知遷移で利用します。
   const navigate = useNavigate();
+  // 現在URLです。画面遷移時に通知数を再取得するため依存配列に入れます。
   const location = useLocation();
+  // ヘッダーのベルに表示する未読通知数です。
   const [notificationCount, setNotificationCount] = useState(0);
-  const { lang, setLang, t } = useI18n();
 
+  // user が存在すればログイン済みとして扱います。
   const isLoggedIn = useMemo(() => Boolean(user), [user]);
 
+  // ログアウト時は、現在ページに残さず商品一覧トップへ戻します。
   function logoutAndGoHome() {
     logout();
     navigate('/');
@@ -33,7 +37,10 @@ export function App() {
   }
 
   useEffect(() => {
+    // アンマウント後に setState しないためのフラグです。
     let cancelled = false;
+
+    // 未読通知数だけを軽く取得して、ヘッダーのバッジへ反映します。
     async function loadNotificationCount() {
       if (!user) {
         setNotificationCount(0);
@@ -42,49 +49,47 @@ export function App() {
       const list = await meApi.notifications().catch(() => []);
       if (!cancelled) setNotificationCount(list.filter((n) => !n.readAt).length);
     }
+
     loadNotificationCount();
     window.addEventListener('notifications:changed', loadNotificationCount);
     const timer = window.setInterval(loadNotificationCount, 30000);
-    return () => { cancelled = true; window.removeEventListener('notifications:changed', loadNotificationCount); window.clearInterval(timer); };
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('notifications:changed', loadNotificationCount);
+      window.clearInterval(timer);
+    };
   }, [user?.id, location.pathname]);
 
-  if (isLoading) return <main className="container">{t('loading')}</main>;
+  if (isLoading) return <main className="container">読み込み中...</main>;
 
   return (
     <>
       <header className="header">
         <Link className="logo" to="/">AI Flea Market</Link>
         <nav className="nav">
-          <Link to="/">{t('items')}</Link>
+          <Link to="/">商品一覧</Link>
           {isLoggedIn ? (
             <>
-              <Link to="/items/new">{t('sell')}</Link>
-              <Link to="/my/items">{t('myItems')}</Link>
-              <Link to="/my/purchases">{t('purchases')}</Link>
-              <Link to="/my/checklist">{t('checklist')}</Link>
+              <Link to="/items/new">出品する</Link>
+              <Link to="/my/items">出品履歴</Link>
+              <Link to="/my/purchases">購入履歴</Link>
+              <Link to="/my/checklist">チェックリスト</Link>
               <Link className="notificationNav" to="/my/notifications" aria-label={`通知 ${notificationCount}件`}>
                 <span className="bellIcon">🔔</span>
-                {t('notifications')}
+                通知
                 {notificationCount > 0 && <span className="notificationBadge">{notificationCount}</span>}
               </Link>
-              <Link to="/my">{t('myPage')}</Link>
-              <select className="languageSelect" value={lang} onChange={(e) => setLang(e.target.value as 'ja' | 'en')} aria-label="表示言語">
-                <option value="ja">日本語</option>
-                <option value="en">English</option>
-              </select>
+              <Link to="/my">マイページ</Link>
               <div className="userArea">
                 <span className="userName">{user?.name}</span>
-                <button onClick={logoutAndGoHome}>{t('logout')}</button>
+                <button onClick={logoutAndGoHome}>ログアウト</button>
               </div>
             </>
           ) : (
             <>
-              <select className="languageSelect" value={lang} onChange={(e) => setLang(e.target.value as 'ja' | 'en')} aria-label="表示言語">
-                <option value="ja">日本語</option>
-                <option value="en">English</option>
-              </select>
-              <Link className="navButton loginButton" to="/login">{t('login')}</Link>
-              <Link className="navButton registerButton" to="/register">{t('register')}</Link>
+              <Link className="navButton loginButton" to="/login">ログイン</Link>
+              <Link className="navButton registerButton" to="/register">新規登録</Link>
             </>
           )}
         </nav>

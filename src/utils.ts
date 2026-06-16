@@ -39,7 +39,9 @@ export function formatYen(value: unknown): string {
 }
 
 export function formatCoins(value: unknown): string {
-  return `${safeNumber(value).toLocaleString('ja-JP')} コイン`;
+  // DBとAPIの内部名は過去実装との互換性のため balanceCoins / salesCoins のままですが、
+  // 画面上の金額表記はサービス全体で日本円風の "¥" に統一します。
+  return formatYen(value);
 }
 
 export function statusLabel(status: string): string {
@@ -62,4 +64,49 @@ export function normalizeImageUrl(url: string): string {
   const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (driveMatch) return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
   return trimmed;
+}
+
+
+export function parseImageUrls(value?: string | null): string[] {
+  // 商品画像は、従来の単一URL文字列と、新しい複数画像JSON配列の両方に対応します。
+  // 既存データを壊さずに複数アップロードへ拡張するため、DB列は image_url のまま使います。
+  const raw = String(value ?? '').trim();
+  if (!raw) return [];
+
+  // 複数画像の場合は JSON.stringify([...]) した文字列として保存します。
+  // 例: ["data:image/...", "data:image/..."]
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((x): x is string => typeof x === 'string')
+          .map((x) => normalizeImageUrl(x))
+          .filter(Boolean);
+      }
+    } catch {
+      // JSONとして壊れている場合は、下の単一URL扱いに落とします。
+    }
+  }
+
+  // 念のため、改行区切り・カンマ区切りで保存された文字列も読めるようにします。
+  // data:image/svg+xml にはカンマが含まれるため、data:imageの場合は分割しません。
+  if (!raw.startsWith('data:image/') && /\n/.test(raw)) {
+    return raw.split(/\n+/).map((x) => normalizeImageUrl(x)).filter(Boolean);
+  }
+
+  return [normalizeImageUrl(raw)].filter(Boolean);
+}
+
+export function stringifyImageUrls(urls: string[]): string {
+  // 空文字を除き、同じ画像が重複して入らないように整えます。
+  const cleaned = Array.from(new Set(urls.map((x) => x.trim()).filter(Boolean)));
+  if (cleaned.length === 0) return '';
+  if (cleaned.length === 1) return cleaned[0];
+  return JSON.stringify(cleaned);
+}
+
+export function firstImageUrl(value?: string | null): string {
+  // 商品一覧・購入履歴などの小さいカードでは、複数画像の1枚目だけを代表画像として表示します。
+  return parseImageUrls(value)[0] ?? '';
 }

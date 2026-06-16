@@ -1,20 +1,23 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { itemApi, meApi, type ItemSearchParams } from '../api/client';
+import { aiApi, itemApi, meApi, type ItemSearchParams } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useI18n, translateKnownValue } from '../i18n';
 import { TranslatedText } from '../TranslatedText';
 import { colors, conditions, deliveryWithinOptions, searchableCategories, sizes } from '../formOptions';
 import { describeSavedSearch, parseSavedSearchQuery } from '../savedSearch';
 import type { Item, ItemStatus, RecommendationResponse, SavedSearch } from '../types';
-import { formatYen, normalizeImageUrl, statusLabel } from '../utils';
+import { formatYen, firstImageUrl, statusLabel } from '../utils';
 
+// 商品一覧の販売状況フィルタで使う候補です。
+// DB上の値は available / sold ですが、画面では分かりやすいラベルで表示します。
 const statuses: Array<{ value: ItemStatus; label: string }> = [
   { value: 'available', label: 'Available' },
   { value: 'sold', label: 'SOLD' },
 ];
 
+// 左サイドバーの複数選択フィルタを共通化するためのpropsです。
 type OptionGroupProps = {
   title: string;
   values: string[];
@@ -23,10 +26,13 @@ type OptionGroupProps = {
   translateLabel?: (value: string) => string;
 };
 
+// チェックボックス1つを押したとき、選択済みなら外し、未選択なら追加します。
 function toggleValue(values: string[], value: string): string[] {
   return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
 }
 
+// Amazon風サイドバーの折りたたみフィルタです。
+// details/summaryを使うことで、少ない実装で開閉UIとキーボード操作を両立します。
 function MultiFilter({ title, values, selected, onChange, translateLabel = (v) => v }: OptionGroupProps) {
   const selectedLabel = selected.length > 0 ? `（${selected.length}件）` : '';
 
@@ -48,10 +54,12 @@ function MultiFilter({ title, values, selected, onChange, translateLabel = (v) =
   );
 }
 
+// APIの検索パラメータはカンマ区切り文字列で送るため、配列との相互変換をまとめます。
 function join(values: string[]): string { return values.join(','); }
 function split(value?: string): string[] { return value ? value.split(',').filter(Boolean) : []; }
+
+// Goのnil sliceがJSON nullになる場合でも、React側では常に配列として扱います。
 function safeRecommendationItems(recommendation: RecommendationResponse | null): Item[] {
-  // APIが items:null を返す場合でも、画面表示では空配列として扱います。
   return Array.isArray(recommendation?.items) ? recommendation.items : [];
 }
 
@@ -59,6 +67,8 @@ export function ItemListPage() {
   const { user } = useAuth();
   const { lang, t } = useI18n();
   const [searchParams] = useSearchParams();
+
+  // 通常検索フォームの状態です。保存検索条件や自然言語検索も最終的にはここへ反映します。
   const [q, setQ] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -70,15 +80,29 @@ export function ItemListPage() {
   const [tag, setTag] = useState('');
   const [deliveryWithin, setDeliveryWithin] = useState('');
   const [sort, setSort] = useState('recommended');
+
+  // 商品一覧、レコメンド、保存検索条件の状態です。
   const [items, setItems] = useState<Item[]>([]);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
+  const [isRecommendationLoading, setIsRecommendationLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState('');
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+
+  // 生成AIを活用した自然言語検索用の状態です。
+  // AIが使えない場合もバックエンド側でローカル規則にフォールバックします。
+  const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
+  const [naturalLanguageMessage, setNaturalLanguageMessage] = useState('');
+  const [naturalLanguageError, setNaturalLanguageError] = useState('');
+  const [isNaturalLanguageLoading, setIsNaturalLanguageLoading] = useState(false);
+
+  // 画面全体の検索・エラー・保存メッセージ状態です。
   const [isSearched, setIsSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [saveName, setSaveName] = useState('');
   const [message, setMessage] = useState('');
 
+  // 現在の検索フォーム状態をAPIパラメータへ変換します。
   function currentParams(): ItemSearchParams {
     return {
       q,
@@ -95,6 +119,7 @@ export function ItemListPage() {
     };
   }
 
+  // 保存検索条件・自然言語検索・リセットなどから、一括でフォーム状態を更新します。
   function applyParams(params: ItemSearchParams) {
     setQ(params.q ?? '');
     setCategories(split(params.category));
@@ -109,6 +134,7 @@ export function ItemListPage() {
     setSort(params.sort ?? 'recommended');
   }
 
+  // 商品一覧を取得します。
   async function loadItems(params = currentParams(), searched = true) {
     setError('');
     setMessage('');
@@ -123,6 +149,7 @@ export function ItemListPage() {
     }
   }
 
+  // 保存検索条件を読み込みます。未ログイン時は空にします。
   async function loadSavedSearches() {
     if (!user) {
       setSavedSearches([]);
@@ -131,18 +158,38 @@ export function ItemListPage() {
     setSavedSearches(await meApi.savedSearches().catch(() => []));
   }
 
+  // 初回表示では「検索結果なし」の表示を出さず、通常の商品一覧だけ取得します。
   useEffect(() => { loadItems(currentParams(), false); }, []);
   useEffect(() => { loadSavedSearches(); }, [user?.id]);
+
+  // レコメンドは少し遅れても枠が常に見えるよう、ロード中表示を出します。
   useEffect(() => {
+    let cancelled = false;
     async function loadRecommendations() {
+      setRecommendationError('');
       if (!user) {
         setRecommendation(null);
+        setIsRecommendationLoading(false);
         return;
       }
-      setRecommendation(await meApi.recommendations().catch(() => null));
+      setIsRecommendationLoading(true);
+      try {
+        const data = await meApi.recommendations();
+        if (!cancelled) setRecommendation(data);
+      } catch (e) {
+        if (!cancelled) {
+          setRecommendation(null);
+          setRecommendationError(e instanceof Error ? e.message : 'おすすめの取得に失敗しました');
+        }
+      } finally {
+        if (!cancelled) setIsRecommendationLoading(false);
+      }
     }
     loadRecommendations();
+    return () => { cancelled = true; };
   }, [user?.id]);
+
+  // 通知やマイページから保存済み検索条件ID付きで戻ってきた場合、その条件を反映します。
   useEffect(() => {
     const savedSearchID = searchParams.get('savedSearch');
     if (!savedSearchID || savedSearches.length === 0) return;
@@ -150,6 +197,7 @@ export function ItemListPage() {
     if (row) applySavedSearch(row);
   }, [searchParams, savedSearches.length]);
 
+  // 現在の検索条件をマイページの保存検索条件として保存します。
   async function saveSearch() {
     if (!user) {
       setError('検索条件の保存にはログインが必要です');
@@ -168,6 +216,7 @@ export function ItemListPage() {
     }
   }
 
+  // 保存済み検索条件を商品一覧に反映します。
   async function applySavedSearch(search: SavedSearch) {
     const params = parseSavedSearchQuery(search.queryJson);
     applyParams(params);
@@ -175,20 +224,53 @@ export function ItemListPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // 通常の検索フォーム送信です。
   function submitSearch(event: FormEvent) {
     event.preventDefault();
     loadItems(currentParams(), true);
+  }
+
+  // 自然言語検索の送信です。
+  // バックエンドが自然文を既存検索パラメータへ変換し、同じ商品一覧APIで絞り込みます。
+  async function submitNaturalLanguageSearch(event: FormEvent) {
+    event.preventDefault();
+    const query = naturalLanguageQuery.trim();
+    if (!query) {
+      setNaturalLanguageError('検索したい内容を入力してください');
+      return;
+    }
+    setNaturalLanguageError('');
+    setNaturalLanguageMessage('');
+    setIsNaturalLanguageLoading(true);
+    try {
+      const parsed = await aiApi.parseSearch(query);
+      const params: ItemSearchParams = {
+        q: parsed.q ?? '',
+        category: parsed.category ?? '',
+        size: parsed.size ?? '',
+        color: parsed.color ?? '',
+        condition: parsed.condition ?? '',
+        status: parsed.status ?? '',
+        minPrice: parsed.minPrice ?? '',
+        maxPrice: parsed.maxPrice ?? '',
+        tag: parsed.tag ?? '',
+        deliveryWithin: parsed.deliveryWithin ?? '',
+        sort: parsed.sort ?? 'recommended',
+      };
+      applyParams(params);
+      await loadItems(params, true);
+      setNaturalLanguageMessage([parsed.explanation, parsed.notice].filter(Boolean).join(' '));
+    } catch (e) {
+      setNaturalLanguageError(e instanceof Error ? e.message : '自然言語検索に失敗しました');
+    } finally {
+      setIsNaturalLanguageLoading(false);
+    }
   }
 
   const recommendationItems = safeRecommendationItems(recommendation);
 
   return (
     <section className="marketPage">
-      <div className="hero compactHero">
-        <h1>{t('AIが出品と購入判断を支援する次世代フリマ')}</h1>
-        <p>{t('Mercari風の左サイドバー検索とコンパクトな商品カードで、画面内に多くの商品を表示します。')}</p>
-      </div>
-
       <div className="marketLayout">
         <aside className="filterSidebar" aria-label="商品検索条件">
           <form className="sidebarSearchForm" onSubmit={submitSearch}>
@@ -253,6 +335,24 @@ export function ItemListPage() {
         </aside>
 
         <div className="marketMain">
+          <div className="hero compactHero smartHero">
+            <div className="heroMessage">
+              <p className="eyebrow">AI Flea Market</p>
+              <h1>{t('AIが出品と購入判断を支援する次世代フリマ')}</h1>
+              <p>出品文生成、購入前チェック、自然言語検索で、探す・売る・買うをまとめて支援します。</p>
+            </div>
+            <form className="naturalSearchBox" onSubmit={submitNaturalLanguageSearch}>
+              <strong>生成AIで自然言語検索</strong>
+              <p>例: 参考書 300円 ~ 1500円</p>
+              <div className="naturalSearchRow">
+                <input value={naturalLanguageQuery} onChange={(e) => setNaturalLanguageQuery(e.target.value)} placeholder="普段の言葉で探したい条件を入力" />
+                <button type="submit" disabled={isNaturalLanguageLoading}>{isNaturalLanguageLoading ? '解析中...' : 'AI検索'}</button>
+              </div>
+              {naturalLanguageMessage && <small className="success">{naturalLanguageMessage}</small>}
+              {naturalLanguageError && <small className="error">{naturalLanguageError}</small>}
+            </form>
+          </div>
+
           {message && <p className="success">{message}</p>}
           {error && <p className="error">{error}</p>}
           {isLoading && <p className="muted">{t('商品を読み込んでいます...')}</p>}
@@ -263,26 +363,47 @@ export function ItemListPage() {
             </div>
           )}
 
-          {recommendationItems.length > 0 && (
-            <div className="recommendationStrip card">
-              <h2>{t('MerRecデータセットを想定したおすすめ')}</h2>
-              <p className="muted"><strong>{t('おすすめ理由')}:</strong> <TranslatedText text={recommendation?.reason ?? '閲覧傾向やカテゴリ、価格帯が近い商品をおすすめしています。'} /></p>
-              <div className="miniRecommendationGrid">
-                {recommendationItems.slice(0, 4).map((rec) => (
-                  <Link key={rec.id} to={`/items/${rec.id}`} className="miniRecCard">
-                    <TranslatedText text={rec.title} as="strong" />
-                    <span>{formatYen(rec.priceYen)}</span>
-                  </Link>
-                ))}
+          <div className="recommendationStrip card highlightedRecommendation">
+            <div className="recommendationHeader">
+              <div>
+                <p className="eyebrow">Recommended for you</p>
+                <h2>{t('おすすめ商品')}</h2>
               </div>
+              <span className="aiBadge">AI + C2C signals</span>
             </div>
-          )}
+            {isRecommendationLoading ? (
+              <p className="muted loadingInline"><span className="spinner" />C2C取引の閲覧・チェックリスト傾向をもとに、おすすめ商品を生成しています...</p>
+            ) : !user ? (
+              <p className="muted">ログインすると、閲覧傾向・カテゴリ・価格帯を使ったおすすめが表示されます。</p>
+            ) : recommendationError ? (
+              <p className="error">{recommendationError}</p>
+            ) : recommendationItems.length === 0 ? (
+              <p className="muted">現在表示できるおすすめ商品はありません。商品を閲覧・チェックリスト追加するとおすすめが変化します。</p>
+            ) : (
+              <>
+                <p className="muted"><strong>{t('おすすめ理由')}:</strong> <TranslatedText text={recommendation?.reason ?? '閲覧傾向やカテゴリ、価格帯が近い商品をおすすめしています。'} /></p>
+                <div className="miniRecommendationGrid wideMiniRecommendationGrid">
+                  {recommendationItems.slice(0, 8).map((rec) => (
+                    <Link key={rec.id} to={`/items/${rec.id}`} className="miniRecCard">
+                      {rec.imageUrl ? (
+                        <img className="miniRecImage" src={firstImageUrl(rec.imageUrl)} alt={rec.title} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      ) : (
+                        <div className="miniRecNoImage">No Image</div>
+                      )}
+                      <TranslatedText text={rec.title} as="strong" />
+                      <span>{formatYen(rec.priceYen)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="grid denseGrid">
             {items.map((item) => (
               <Link key={item.id} className="itemCard compactItemCard" to={`/items/${item.id}`}>
                 {item.imageUrl ? (
-                  <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <img src={firstImageUrl(item.imageUrl)} alt={item.title} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 ) : (
                   <div className="noImage">No Image</div>
                 )}

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import type { Item, ItemAIAnalysis, Message, PrivateMessage } from '../types';
 import { useI18n, translateKnownValue } from '../i18n';
 import { TranslatedText } from '../TranslatedText';
-import { formatDate, formatYen, nextPurchaseStep, normalizeImageUrl, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
+import { formatDate, formatYen, nextPurchaseStep, parseImageUrls, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
 
 type Thread = { parent: Message; replies: Message[] };
 type PrivateThread = { parent: PrivateMessage; replies: PrivateMessage[] };
@@ -24,7 +24,10 @@ function buildPrivateThreads(messages: PrivateMessage[]): PrivateThread[] {
 }
 
 function CommentBox({ message, isReply }: { message: Message; isReply?: boolean }) {
-  return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.isSeller ? 'sellerMessage' : ''}`}><div className="messageHeader"><strong className={message.isSeller ? 'sellerName' : ''}>{message.senderName}</strong>{message.isSeller && <span className="sellerBadge">出品者</span>}<span className="muted">{formatDate(message.updatedAt)}</span></div><p>{message.body}</p></div>;
+  // 公開コメントの表示時刻は createdAt を使います。
+  // 返信が追加されたときに親コメントの updatedAt をスレッド並び替え用に更新するため、
+  // updatedAt を表示すると、過去の親コメント時刻まで最新返信時刻に見えてしまいます。
+  return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.isSeller ? 'sellerMessage' : ''}`}><div className="messageHeader"><strong className={message.isSeller ? 'sellerName' : ''}>{message.senderName}</strong>{message.isSeller && <span className="sellerBadge">出品者</span>}<span className="muted">{formatDate(message.createdAt)}</span></div><p>{message.body}</p></div>;
 }
 
 function PrivateMessageBox({ message, currentUserId, isReply }: { message: PrivateMessage; currentUserId: number; isReply?: boolean }) {
@@ -52,6 +55,7 @@ export function ItemDetailPage() {
   const [item, setItem] = useState<Item | null>(null);
   const [question, setQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
+  const [aiAnswerNotice, setAiAnswerNotice] = useState('');
   const [analysis, setAnalysis] = useState<ItemAIAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAskingAI, setIsAskingAI] = useState(false);
@@ -64,6 +68,7 @@ export function ItemDetailPage() {
   const [isChecked, setIsChecked] = useState(false);
   const [error, setError] = useState('');
   const [imageBroken, setImageBroken] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isSellerBlocked, setIsSellerBlocked] = useState(false);
 
   const threads = useMemo(() => buildThreads(messages), [messages]);
@@ -98,6 +103,12 @@ export function ItemDetailPage() {
 
   useEffect(() => { load(); }, [itemId, user?.id]);
 
+  useEffect(() => {
+    // 商品が切り替わった場合は、画像カルーセルを必ず1枚目に戻します。
+    setSelectedImageIndex(0);
+    setImageBroken(false);
+  }, [item?.id, item?.imageUrl]);
+
   async function toggleChecklist() {
     if (!item || !user) return;
     setError('');
@@ -119,8 +130,9 @@ export function ItemDetailPage() {
     if (!item || !question) return;
     setError('');
     setAiAnswer('');
+    setAiAnswerNotice('');
     setIsAskingAI(true);
-    try { setAiAnswer((await itemApi.ask(item.id, question)).text); }
+    try { const result = await itemApi.ask(item.id, question); setAiAnswer(result.text); setAiAnswerNotice(result.notice ?? ''); }
     catch (e) { setError(e instanceof Error ? e.message : 'AI回答に失敗しました'); }
     finally { setIsAskingAI(false); }
   }
@@ -149,12 +161,29 @@ export function ItemDetailPage() {
   const isOwnItem = Boolean(user && user.id === item.sellerId);
   const canPurchase = Boolean(user && item.status === 'available' && !isOwnItem);
   const canUseChecklist = Boolean(user && !isOwnItem && item.status !== 'canceled');
-  const image = normalizeImageUrl(item.imageUrl);
+  const imageUrls = parseImageUrls(item.imageUrl);
+  const safeSelectedImageIndex = imageUrls.length > 0 ? selectedImageIndex % imageUrls.length : 0;
+  const selectedImage = imageUrls.length > 0 ? imageUrls[safeSelectedImageIndex] : '';
   const nextStep = nextPurchaseStep(item.purchaseStatus);
+
+  function moveImage(delta: number) {
+    // 最後の画像の次は1枚目へ、1枚目の前は最後へ移動する巡回表示です。
+    if (imageUrls.length === 0) return;
+    setImageBroken(false);
+    setSelectedImageIndex((current) => (current + delta + imageUrls.length) % imageUrls.length);
+  }
 
   return <section className="detail">
     <div className="card">
-      {image && !imageBroken ? <img className="detailImage" src={image} alt={item.title} onError={() => setImageBroken(true)} /> : <div className="detailNoImage">No Image<br /><small>画像URLが直接画像を返さない場合は表示できません。出品画面から画像ファイルを直接アップロードする方法がおすすめです。</small></div>}
+      {selectedImage && !imageBroken ? (
+        <div className="detailGallery">
+          <button type="button" className="galleryNav galleryPrev" onClick={() => moveImage(-1)} aria-label="前の画像を表示">‹</button>
+          <img className="detailImage" src={selectedImage} alt={item.title} onClick={() => moveImage(1)} onError={() => setImageBroken(true)} />
+          <button type="button" className="galleryNav galleryNext" onClick={() => moveImage(1)} aria-label="次の画像を表示">›</button>
+          {imageUrls.length > 1 && <p className="galleryCounter">{safeSelectedImageIndex + 1} / {imageUrls.length}</p>}
+          {imageUrls.length > 1 && <div className="galleryThumbs">{imageUrls.map((url, index) => <button type="button" key={`${url.slice(0, 40)}-${index}`} className={index === safeSelectedImageIndex ? 'selectedGalleryThumb' : ''} onClick={() => { setImageBroken(false); setSelectedImageIndex(index); }}><img src={url} alt={`${index + 1}枚目`} /></button>)}</div>}
+        </div>
+      ) : <div className="detailNoImage">No Image<br /><small>画像URLが直接画像を返さない場合は表示できません。出品画面から画像ファイルを直接アップロードする方法がおすすめです。</small></div>}
       <div className="historyHeader"><div><span className="productCode">{item.productCode}</span><TranslatedText text={item.title} as="h1" /><p className="muted">出品者: {item.sellerName}</p></div>{isOwnItem && <span className="ownerBadge">自分が出品した商品です</span>}</div>
       <TranslatedText text={item.description} as="p" />
       <p className="likeSummary" aria-label={`チェックリスト追加数 ${item.checklistCount}`}>♡ {item.checklistCount}</p>
@@ -165,7 +194,7 @@ export function ItemDetailPage() {
       <div className="actions">{canPurchase && <Link className="button" to={`/items/${item.id}/purchase`}>購入手続きへ</Link>}{canUseChecklist && <button className={isChecked ? 'checklistCheckedButton' : 'checklistButton'} onClick={toggleChecklist}>{isChecked ? 'チェックリストに追加済み' : 'チェックリストに追加'}</button>}{user && !isOwnItem && <button className={isSellerBlocked ? 'blockedButton' : 'secondaryButton blockButton'} onClick={toggleBlockSeller}>{isSellerBlocked ? 'ブロック中' : 'この出品者をブロック'}</button>}{isOwnItem && <Link className="button secondary" to="/my/items">出品履歴で編集する</Link>}</div>
       {error && <p className="error">{error}</p>}
     </div>
-    {!isOwnItem && <div className="card"><h2>{t('AIに商品について質問する')}</h2><form onSubmit={askAI} className="form"><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="例: 初心者にも使いやすいですか？" /><button type="submit" disabled={isAskingAI || !question.trim()}>{isAskingAI ? <span className="loadingInline"><span className="spinner" />{t('AIが回答を生成中...')}</span> : t('AIに聞く')}</button></form>{aiAnswer && <TranslatedText text={aiAnswer} as="p" className="aiAnswer" />}</div>}
+    {!isOwnItem && <div className="card"><h2>{t('AIに商品について質問する')}</h2><form onSubmit={askAI} className="form"><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="例: 初心者にも使いやすいですか？" /><button type="submit" disabled={isAskingAI || !question.trim()}>{isAskingAI ? <span className="loadingInline"><span className="spinner" />{t('AIが回答を生成中...')}</span> : t('AIに聞く')}</button></form>{aiAnswerNotice && <p className="muted aiNoticeInline">{aiAnswerNotice}</p>}{aiAnswer && <TranslatedText text={aiAnswer} as="p" className="aiAnswer" />}</div>}
     <div className="card"><h2>公開コメント</h2><p className="muted">他ユーザーにも公開される質問・補足欄です。</p>{user ? <form onSubmit={sendComment} className="form commentForm"><textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="コメントを追加" /><button type="submit">コメントを追加</button></form> : <p className="muted">ログインするとコメントできます。</p>}<div className="messages">{threads.map((thread) => <div key={thread.parent.id} className="thread"><CommentBox message={thread.parent} /><div className="replies">{thread.replies.map((reply) => <CommentBox key={reply.id} message={reply} isReply />)}</div>{user && <div className="replyForm"><input value={replyBodies[thread.parent.id] ?? ''} onChange={(e) => setReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このコメントに返信" /><button type="button" onClick={() => sendReply(thread.parent.id)}>返信</button></div>}</div>)}</div></div>
     {user && <div className="card"><h2>非公開DM</h2><p className="muted">購入検討者と出品者だけが見られるDMです。話題ごとに返信できます。</p><div className="messages">{privateThreads.map((thread) => <div key={thread.parent.id} className="thread"><PrivateMessageBox message={thread.parent} currentUserId={user.id} /><div className="replies">{thread.replies.map((reply) => <PrivateMessageBox key={reply.id} message={reply} currentUserId={user.id} isReply />)}</div><div className="replyForm"><input value={privateReplyBodies[thread.parent.id] ?? ''} onChange={(e) => setPrivateReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このDMに返信" /><button type="button" onClick={() => sendPrivateReply(thread.parent)}>返信</button></div></div>)}</div><form onSubmit={sendPrivate} className="form"><textarea value={privateBody} onChange={(e) => setPrivateBody(e.target.value)} placeholder="新しい非公開DMを入力" /><button type="submit">DMを送信</button></form></div>}
   </section>;

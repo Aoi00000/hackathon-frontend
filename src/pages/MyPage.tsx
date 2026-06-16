@@ -81,7 +81,7 @@ export function MyPage() {
       setError('');
       setProfile(await authApi.charge(amount));
       setChargeAmount('');
-      showSectionMessage('charge', `${amount.toLocaleString('ja-JP')}コインをチャージしました。通知一覧にも記録しました。`);
+      showSectionMessage('charge', `${formatCoins(amount)}をチャージしました。通知一覧にも記録しました。`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'チャージに失敗しました');
     }
@@ -145,19 +145,35 @@ export function MyPage() {
       <h1>マイページ</h1>
       {error && <p className="error">{error}</p>}
 
-      <div className="card wallet">
-        <div>
-          <h2>残高</h2>
+      <div className="card wallet walletDashboard">
+        {/* 1列目: ユーザーが現在使える残高を一番大きく表示します。 */}
+        <div className="walletBalancePanel">
+          <h2 className="walletTitle">残高</h2>
           <p className="bigNumber">{formatCoins(profile.balanceCoins)}</p>
         </div>
-        <div>
-          <h2>売上金</h2>
-          <p className="bigNumber">{formatCoins(profile.salesCoins)}</p>
+
+        {/* 2列目: 売上と利用額の月次・累計を縦に並べ、収支の概況を一目で見られるようにします。 */}
+        <div className="walletUsagePanel">
+          <div className="walletMetric"><span>今月の売上額</span><strong>{formatCoins(profile.monthlySalesCoins)}</strong></div>
+          <div className="walletMetric"><span>今月の利用額</span><strong>{formatCoins(profile.monthlySpendCoins)}</strong></div>
+          <div className="walletMetric"><span>累計売上額</span><strong>{formatCoins(profile.totalSalesCoins)}</strong></div>
+          <div className="walletMetric"><span>累計利用額</span><strong>{formatCoins(profile.totalSpendCoins)}</strong></div>
         </div>
-        <div>
-          <h2>出品者評価</h2>
-          <p>{safeNumber(profile.ratingCount) > 0 ? <><span className="stars">{ratingStars(profile.ratingAverage)}</span> {safeNumber(profile.ratingAverage).toFixed(1)} / 5.0 ({safeNumber(profile.ratingCount)}件)</> : '評価なし'}</p>
-          <p>取引実績: {safeNumber(profile.transactionCount)}件</p>
+
+        {/* 3列目: 出品者としての信頼度を表示します。 */}
+        <div className="walletSellerPanel">
+          <h2 className="walletTitle">出品者評価</h2>
+          <p className="sellerRatingSummary">
+            {safeNumber(profile.ratingCount) > 0 ? (
+              <>
+                <span className="stars">{ratingStars(profile.ratingAverage)}</span>
+                <span>{safeNumber(profile.ratingAverage).toFixed(1)} / 5.0 ({safeNumber(profile.ratingCount)}件)</span>
+              </>
+            ) : (
+              '評価なし'
+            )}
+          </p>
+          <p className="walletMetric inline"><span>取引実績</span><strong>{safeNumber(profile.transactionCount)}件</strong></p>
         </div>
       </div>
 

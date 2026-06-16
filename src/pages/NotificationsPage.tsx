@@ -7,6 +7,7 @@ import { formatDate } from '../utils';
 
 function targetPath(n: Notification): string {
   if (n.title.includes('出品完了')) return '/my/items';
+  if (n.title.includes('出品キャンセル完了')) return '/my/items';
   if (n.title.includes('購入手続きが完了')) return '/my/purchases';
   if (n.title.includes('商品が購入')) return '/my/items';
   if (n.title.includes('発送通知') && n.body.includes('送信しました')) return '/my/items';

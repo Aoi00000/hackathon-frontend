@@ -1,4 +1,4 @@
-import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
+import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const tokenKey = 'hackathon_token';
@@ -121,4 +121,5 @@ export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
   translate: (text: string) => request<AITextResponse>('/api/ai/translate', { method: 'POST', body: JSON.stringify({ text }) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),
+  parseSearch: (query: string) => request<NaturalSearchResponse>('/api/ai/parse-search', { method: 'POST', body: JSON.stringify({ query }) }),
 };

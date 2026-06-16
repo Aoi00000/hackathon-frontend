@@ -433,8 +433,24 @@ textarea {
 .flow li.done { background: #dcfce7; color: #166534; }
 .flow li.current { background: #dbeafe; color: #1d4ed8; }
 .purchaseLayout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+/* マイページ上部の残高・利用額・評価サマリーです。
+   1列目は残高を大きく、2列目は月次/累計の収支、3列目は出品者評価を表示します。 */
 .wallet { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.bigNumber { font-size: 28px; font-weight: 1000; }
+.walletDashboard { grid-template-columns: minmax(180px, .95fr) minmax(270px, 1.05fr) minmax(240px, 1fr); column-gap: 28px; row-gap: 16px; align-items: stretch; }
+.walletTitle { font-size: 21px; margin-bottom: 12px; }
+.walletBalancePanel, .walletUsagePanel, .walletSellerPanel { min-width: 0; }
+.walletBalancePanel { display: grid; align-content: start; gap: 10px; }
+.walletUsagePanel { display: grid; gap: 10px; }
+.walletSellerPanel { display: grid; align-content: start; gap: 10px; }
+.walletMetric { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eef2f7; }
+.walletMetric:last-child { border-bottom: 0; }
+.walletMetric span { color: #334155; font-size: 15px; font-weight: 850; min-width: 8.2em; }
+.walletMetric strong { font-size: 16px; font-weight: 1000; white-space: nowrap; }
+.walletMetric.inline { justify-content: flex-start; border-bottom: 0; padding: 0; gap: 8px; }
+.walletMetric.inline span { min-width: 5em; }
+.sellerRatingSummary { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; font-weight: 850; }
+.bigNumber { font-size: 32px; font-weight: 1000; margin: 0; }
+@media (max-width: 900px) { .walletDashboard { grid-template-columns: 1fr; } }
 .notice { border-top: 1px solid #e2e8f0; padding: 12px 0; display: grid; gap: 6px; }
 .notice code { white-space: pre-wrap; background: #f8fafc; padding: 8px; border-radius: 8px; }
 .ownPrivateMessage { background: #eef2ff; }
@@ -1256,5 +1272,346 @@ textarea {
   .compactItemCard img,
   .compactItemCard .noImage {
     height: 88px;
+  }
+}
+
+/* ------------------------------------------------------------
+   画像アップロードの削除ボタンとおすすめ商品画像
+   ------------------------------------------------------------ */
+.imagePreviewWrap {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.imageRemoveButton {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+
+.miniRecCard {
+  overflow: hidden;
+}
+
+.miniRecImage,
+.miniRecNoImage {
+  width: 100%;
+  height: 84px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.miniRecNoImage {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------
+   複数画像アップロード・商品詳細画像カルーセル
+   ------------------------------------------------------------ */
+.imagePreviewGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.detailGallery {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.detailGallery .detailImage {
+  cursor: pointer;
+  user-select: none;
+}
+
+.galleryNav {
+  position: absolute;
+  top: min(210px, 42vw);
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.galleryPrev { left: 14px; }
+.galleryNext { right: 14px; }
+
+.galleryCounter {
+  margin: 0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.galleryThumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.galleryThumbs button {
+  width: 64px;
+  height: 48px;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.galleryThumbs button.selectedGalleryThumb {
+  border-color: #2563eb;
+}
+
+.galleryThumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 7px;
+}
+
+/* AI生成で外部AIではなくローカル簡易生成に切り替わった場合の注意表示です。
+   商品説明本文には混ぜず、ラベル横や回答欄の近くに控えめに表示します。 */
+.aiNoticeInline {
+  display: inline-block;
+  margin-left: 8px;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------
+   Final polish: 商品一覧トップの余白解消・色付きUI・自然言語検索
+   ------------------------------------------------------------ */
+/* ヘッダーは白一色ではなく、軽いグラデーションと下線で画面全体の印象を整えます。 */
+.header {
+  background: linear-gradient(90deg, #ffffff 0%, #eff6ff 55%, #f5f3ff 100%);
+  border-bottom: 1px solid #bfdbfe;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08);
+}
+
+/* ナビゲーションはhover時に自然に色が出るようにします。 */
+.nav a {
+  border-radius: 999px;
+  padding: 6px 9px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav a:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* 商品一覧では左サイドバーをヒーローと同じ高さから始め、上部の空白をなくします。 */
+.marketLayout {
+  align-items: start;
+}
+.filterSidebar {
+  align-self: start;
+}
+.marketMain {
+  display: grid;
+  gap: 12px;
+}
+
+/* 以前の .marketPage .compactHero の左余白指定を打ち消し、メインカラム内で横幅いっぱいに使います。 */
+.marketMain .smartHero {
+  margin: 0;
+  max-width: none;
+}
+
+/* トップのヒーローは、左にサービス説明、右に自然言語検索を置く2カラム構成です。 */
+.smartHero {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(360px, 0.92fr);
+  gap: 18px;
+  align-items: center;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 48%, #faf5ff 100%);
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 12px 34px rgba(37, 99, 235, 0.10);
+}
+.heroMessage h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(24px, 3vw, 34px);
+}
+.heroMessage p {
+  margin: 0;
+  color: #475569;
+  font-weight: 650;
+}
+.eyebrow {
+  margin: 0 0 4px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* 自然言語検索ボックス。Geminiが使える場合は外部AI、混雑時はローカル規則で条件化します。 */
+.naturalSearchBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #c4b5fd;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.12);
+}
+.naturalSearchBox strong {
+  color: #312e81;
+  font-size: 15px;
+}
+.naturalSearchBox p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.naturalSearchRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.naturalSearchRow input {
+  border-color: #a5b4fc;
+  background: #ffffff;
+}
+.naturalSearchRow button {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+/* 左検索サイドバーに淡い色を入れ、検索機能であることを視覚的に分かりやすくします。 */
+.sidebarSearchForm {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 58%, #eef6ff 100%);
+  border-color: #bfdbfe;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.10);
+}
+.sidebarSearchForm button[type="submit"] {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+.sidebarSaveBox {
+  background: rgba(219, 234, 254, 0.45);
+  border-radius: 10px;
+  padding: 10px 8px 8px;
+}
+.filterDetails summary::before {
+  color: #2563eb;
+}
+
+/* おすすめ欄はデモで目立つように色付きカードにします。 */
+.highlightedRecommendation {
+  border-color: #fed7aa;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 50%, #fefce8 100%);
+  box-shadow: 0 12px 30px rgba(249, 115, 22, 0.12);
+}
+.recommendationHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.recommendationHeader h2 {
+  margin: 0;
+}
+.aiBadge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.wideMiniRecommendationGrid {
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 10px;
+}
+.miniRecCard {
+  border-color: #fed7aa;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.miniRecCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(249, 115, 22, 0.12);
+}
+.miniRecImage,
+.miniRecNoImage {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #e2e8f0;
+}
+.miniRecNoImage {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* 商品カードも少しだけ色を持たせ、白背景の単調さを避けます。 */
+.compactItemCard {
+  border-color: #dbeafe;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+.compactItemCard:hover {
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.13);
+}
+
+/* マイページ金額パネル: ¥表記を前提に、2列目を詰めて3列目との間に自然な余白を作ります。 */
+.walletDashboard {
+  grid-template-columns: minmax(180px, .9fr) minmax(240px, .95fr) minmax(260px, 1.15fr);
+  column-gap: 36px;
+}
+.walletMetric {
+  gap: 6px;
+  justify-content: flex-start;
+}
+.walletMetric span {
+  min-width: 7.1em;
+  font-size: 15.5px;
+}
+.walletMetric strong {
+  font-size: 16px;
+}
+
+@media (max-width: 980px) {
+  .smartHero {
+    grid-template-columns: 1fr;
+  }
+  .naturalSearchRow {
+    grid-template-columns: 1fr;
   }
 }
