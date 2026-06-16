@@ -1,3 +1,12 @@
+/**
+ * フロントエンドのAPIクライアント。
+ *
+ * 画面ごとにfetchを書くと、認証ヘッダー、JSON変換、エラー処理、null配列対策が重複します。
+ * そこで、このファイルにAPI呼び出しを集約し、各ページは itemApi / meApi / aiApi などの
+ * 意味のある関数を呼ぶだけで済むようにしています。
+ *
+ * Goのnil sliceはJSONではnullになることがあるため、一覧系APIでは asArray で必ず配列へ正規化します。
+ */
 import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
@@ -119,7 +128,6 @@ export const messageApi = {
 
 export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
-  translate: (text: string) => request<AITextResponse>('/api/ai/translate', { method: 'POST', body: JSON.stringify({ text }) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),
   parseSearch: (query: string) => request<NaturalSearchResponse>('/api/ai/parse-search', { method: 'POST', body: JSON.stringify({ query }) }),
 };

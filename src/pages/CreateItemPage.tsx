@@ -1,3 +1,10 @@
+/**
+ * 商品出品ページ。
+ *
+ * 複数画像アップロード、画像削除、AI商品説明生成、カテゴリ別購入者チェックポイント、
+ * マイページに登録した発送元地域の初期反映を担当します。
+ * AI生成では、外部AIが失敗した場合も本文だけを説明欄に入れ、注意文はラベル横に分離して表示します。
+ */
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 

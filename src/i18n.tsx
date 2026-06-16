@@ -1,3 +1,9 @@
+/**
+ * 日本語固定の表示互換レイヤー。
+ *
+ * 途中で英語切り替え機能は不要になったため、現在は常に日本語を返します。
+ * 既存コンポーネントが useI18n().t(...) を呼んでいるため、API形状だけ残しています。
+ */
 import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 

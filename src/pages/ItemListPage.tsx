@@ -1,3 +1,16 @@
+/**
+ * 商品一覧ページ。
+ *
+ * この画面は、Demo Dayで最初に見せるトップページであり、
+ * 1. Amazon/Mercari風の左サイドバー検索、
+ * 2. Gemini/Vertex AIまたはローカル規則による自然言語検索、
+ * 3. C2C取引傾向を想定したおすすめ商品表示、
+ * 4. コンパクトな商品カード一覧
+ * をまとめて担当します。
+ *
+ * 自然言語検索は、既存の検索フォームの状態へ変換してから通常の商品一覧APIを呼びます。
+ * これにより、AI検索と通常検索で検索ロジックが二重化しないようにしています。
+ */
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -345,7 +358,7 @@ export function ItemListPage() {
               <strong>生成AIで自然言語検索</strong>
               <p>例: 参考書 300円 ~ 1500円</p>
               <div className="naturalSearchRow">
-                <input value={naturalLanguageQuery} onChange={(e) => setNaturalLanguageQuery(e.target.value)} placeholder="普段の言葉で探したい条件を入力" />
+                <input value={naturalLanguageQuery} onChange={(e) => setNaturalLanguageQuery(e.target.value)} placeholder="例: 参考書 300円 ~ 1500円" />
                 <button type="submit" disabled={isNaturalLanguageLoading}>{isNaturalLanguageLoading ? '解析中...' : 'AI検索'}</button>
               </div>
               {naturalLanguageMessage && <small className="success">{naturalLanguageMessage}</small>}

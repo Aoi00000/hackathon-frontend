@@ -1,3 +1,10 @@
+/**
+ * 商品詳細ページ。
+ *
+ * 複数画像カルーセル、購入前AIチェック、AI質問応答、公開コメント、非公開DM、
+ * チェックリスト、購入導線をまとめて表示します。
+ * コメント時刻は createdAt を表示し、返信によって親コメントの表示時刻が変わらないようにしています。
+ */
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 

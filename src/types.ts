@@ -1,3 +1,9 @@
+/**
+ * フロントエンドで使うTypeScript型定義。
+ *
+ * Goバックエンドの JSON レスポンスと対応します。
+ * API項目を変更するときは、バックエンドの models.go とこのファイルを合わせて更新します。
+ */
 export type User = {
   id: number;
   name: string;

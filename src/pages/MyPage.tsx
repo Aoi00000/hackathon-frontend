@@ -1,3 +1,10 @@
+/**
+ * マイページ。
+ *
+ * 残高、今月/累計の売上・利用額、出品者評価、発送元/お届け先住所、
+ * 保存検索条件、ブロック、運営DMを管理します。
+ * 操作完了メッセージは、画面上部にまとめず、操作したカードの近くに表示します。
+ */
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 

@@ -1,3 +1,10 @@
+/**
+ * フロントエンド共通ユーティリティ。
+ *
+ * 金額表記、JST時刻表示、画像URL配列変換、評価星表示など、複数ページで使う処理を集約します。
+ * 特に画像は、旧仕様の単一URLと新仕様の複数画像JSON配列の両方を扱うため、
+ * 各ページが独自にJSON.parseしないようここで吸収します。
+ */
 export function formatDate(value?: string | null): string {
   if (!value) return '-';
   const raw = String(value).trim();
