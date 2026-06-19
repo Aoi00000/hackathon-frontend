@@ -7,7 +7,7 @@
  *
  * Goのnil sliceはJSONではnullになることがあるため、一覧系APIでは asArray で必ず配列へ正規化します。
  */
-import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User, MonthlyMoneySummary, PaymentMethod } from '../types';
+import type { AIChatMessage, AIChatThread, AIChatTurnResponse, AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User, MonthlyMoneySummary, PaymentMethod } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const tokenKey = 'hackathon_token';
@@ -84,6 +84,9 @@ export const itemApi = {
   ship: (id: number) => request<{ id: number }>(`/api/items/${id}/ship`, { method: 'POST' }),
   complete: (id: number, rating: number, ratingComment: string) => request<{ id: number }>(`/api/items/${id}/complete`, { method: 'POST', body: JSON.stringify({ rating, ratingComment }) }),
   ask: (id: number, question: string) => request<AITextResponse>(`/api/items/${id}/ask`, { method: 'POST', body: JSON.stringify({ question }) }),
+  // 価格交渉アシスタントです。商品詳細ページで希望金額を入力すると、
+  // 現在ログイン中のユーザーが出品者か購入検討者かをバックエンド側で判定し、立場に合う文面を返します。
+  negotiationAssist: (id: number, desiredPriceYen: number) => request<AITextResponse>(`/api/items/${id}/negotiation-assist`, { method: 'POST', body: JSON.stringify({ desiredPriceYen }) }),
   analysis: (id: number) => request<ItemAIAnalysis>(`/api/items/${id}/analysis`),
 };
 
@@ -136,5 +139,17 @@ export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),
   parseSearch: (query: string) => request<NaturalSearchResponse>('/api/ai/parse-search', { method: 'POST', body: JSON.stringify({ query }) }),
+  // chat は古い単発AI対話APIとの互換用です。
+  // 現在のAI対話ページでは、下の thread 系APIを使ってDBに履歴を保存します。
   chat: (message: string) => request<AITextResponse>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message }) }),
+  // ログインユーザー本人のAI対話スレッド一覧を取得します。
+  chatThreads: async () => asArray(await request<AIChatThread[]>('/api/me/ai-chat-threads')),
+  // 新しい話題を始めるための空スレッドを作成します。
+  createChatThread: (title: string) => request<AIChatThread>('/api/me/ai-chat-threads', { method: 'POST', body: JSON.stringify({ title }) }),
+  // 不要なAI対話スレッドを削除します。メッセージはDBのCASCADEで一緒に消えます。
+  deleteChatThread: (threadId: number) => request<{ ok: boolean }>(`/api/me/ai-chat-threads/${threadId}`, { method: 'DELETE' }),
+  // 選択中スレッドのメッセージ履歴を取得します。
+  chatMessages: async (threadId: number) => asArray(await request<AIChatMessage[]>(`/api/me/ai-chat-threads/${threadId}/messages`)),
+  // ユーザー発言を保存し、AI回答も保存して1往復分を返します。
+  sendChatMessage: (threadId: number, message: string) => request<AIChatTurnResponse>(`/api/me/ai-chat-threads/${threadId}/messages`, { method: 'POST', body: JSON.stringify({ message }) }),
 };

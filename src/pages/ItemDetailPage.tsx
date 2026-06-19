@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import type { Item, ItemAIAnalysis, Message, PrivateMessage } from '../types';
 import { useI18n, translateKnownValue } from '../i18n';
 import { TranslatedText } from '../TranslatedText';
-import { formatDate, formatYen, nextPurchaseStep, parseImageUrls, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
+import { formatDate, formatYen, isVideoUrl, nextPurchaseStep, parseImageUrls, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
 
 type Thread = { parent: Message; replies: Message[] };
 type PrivateThread = { parent: PrivateMessage; replies: PrivateMessage[] };
@@ -63,9 +63,17 @@ export function ItemDetailPage() {
   const [question, setQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiAnswerNotice, setAiAnswerNotice] = useState('');
+  // 価格交渉アシスタントの希望金額入力です。購入検討者は『この金額でお願いしたい』、出品者は『この金額なら承諾/断る』の判断材料として使います。
+  const [negotiationPrice, setNegotiationPrice] = useState('');
+  // AIが生成した価格交渉メッセージの本文です。公開コメントやDMへそのまま貼れるよう、丁寧な文面を返します。
+  const [negotiationText, setNegotiationText] = useState('');
+  // 外部AIが使えずローカル生成へ落ちた場合などの補足表示です。
+  const [negotiationNotice, setNegotiationNotice] = useState('');
   const [analysis, setAnalysis] = useState<ItemAIAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAskingAI, setIsAskingAI] = useState(false);
+  // 価格交渉文面の生成中フラグです。二重送信を防ぎ、ボタン文言も切り替えます。
+  const [isNegotiating, setIsNegotiating] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
   const [commentBody, setCommentBody] = useState('');
@@ -144,6 +152,31 @@ export function ItemDetailPage() {
     finally { setIsAskingAI(false); }
   }
 
+  async function generateNegotiationMessage(event: FormEvent) {
+    // 価格交渉は、買い手・売り手のどちらにとっても感情的になりやすい部分です。
+    // そこで希望金額と商品文脈をAIへ渡し、角が立ちにくい承諾・相談・お断りの文面を生成します。
+    event.preventDefault();
+    if (!item) return;
+    const desiredPrice = Number(negotiationPrice);
+    if (!Number.isInteger(desiredPrice) || desiredPrice <= 0) {
+      setError('希望金額を1円以上の整数で入力してください');
+      return;
+    }
+    setError('');
+    setNegotiationText('');
+    setNegotiationNotice('');
+    setIsNegotiating(true);
+    try {
+      const result = await itemApi.negotiationAssist(item.id, desiredPrice);
+      setNegotiationText(result.text);
+      setNegotiationNotice(result.notice ?? '');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '価格交渉メッセージの生成に失敗しました');
+    } finally {
+      setIsNegotiating(false);
+    }
+  }
+
   async function sendComment(event: FormEvent) { event.preventDefault(); if (!item || !user || !commentBody.trim()) return; setError(''); try { await messageApi.send(item.id, commentBody); setCommentBody(''); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'コメント送信に失敗しました'); } }
   async function sendReply(parentId: number) { if (!item || !user) return; const body = replyBodies[parentId]?.trim(); if (!body) return; setError(''); try { await messageApi.send(item.id, body, parentId); setReplyBodies((c) => ({ ...c, [parentId]: '' })); await load(); } catch (e) { setError(e instanceof Error ? e.message : '返信に失敗しました'); } }
 
@@ -197,12 +230,16 @@ export function ItemDetailPage() {
       {selectedImage && !imageBroken ? (
         <div className="detailGallery">
           <button type="button" className="galleryNav galleryPrev" onClick={() => moveImage(-1)} aria-label="前の画像を表示">‹</button>
-          <img className="detailImage" src={selectedImage} alt={item.title} onClick={() => moveImage(1)} onError={() => setImageBroken(true)} />
+          {isVideoUrl(selectedImage) ? (
+            <video className="detailImage detailVideo" src={selectedImage} controls playsInline onError={() => setImageBroken(true)} />
+          ) : (
+            <img className="detailImage" src={selectedImage} alt={item.title} onClick={() => moveImage(1)} onError={() => setImageBroken(true)} />
+          )}
           <button type="button" className="galleryNav galleryNext" onClick={() => moveImage(1)} aria-label="次の画像を表示">›</button>
           {imageUrls.length > 1 && <p className="galleryCounter">{safeSelectedImageIndex + 1} / {imageUrls.length}</p>}
-          {imageUrls.length > 1 && <div className="galleryThumbs">{imageUrls.map((url, index) => <button type="button" key={`${url.slice(0, 40)}-${index}`} className={index === safeSelectedImageIndex ? 'selectedGalleryThumb' : ''} onClick={() => { setImageBroken(false); setSelectedImageIndex(index); }}><img src={url} alt={`${index + 1}枚目`} /></button>)}</div>}
+          {imageUrls.length > 1 && <div className="galleryThumbs">{imageUrls.map((url, index) => <button type="button" key={`${url.slice(0, 40)}-${index}`} className={index === safeSelectedImageIndex ? 'selectedGalleryThumb' : ''} onClick={() => { setImageBroken(false); setSelectedImageIndex(index); }}>{isVideoUrl(url) ? <span className="videoThumb">動画</span> : <img src={url} alt={`${index + 1}枚目`} />}</button>)}</div>}
         </div>
-      ) : <div className="detailNoImage">No Image<br /><small>画像URLが直接画像を返さない場合は表示できません。出品画面から画像ファイルを直接アップロードする方法がおすすめです。</small></div>}
+      ) : <div className="detailNoImage">No Media<br /><small>画像・動画URLが直接表示できない場合は、出品画面から画像または短い動画ファイルを直接アップロードする方法がおすすめです。</small></div>}
       <div className="historyHeader"><div><span className="productCode">{item.productCode}</span><TranslatedText text={item.title} as="h1" /><p className="muted">出品者: {item.sellerName}</p></div>{isOwnItem && <span className="ownerBadge">自分が出品した商品です</span>}</div>
       <TranslatedText text={item.description} as="p" />
       <p className="likeSummary" aria-label={`チェックリスト追加数 ${item.checklistCount}`}>♡ {item.checklistCount}</p>
@@ -215,6 +252,7 @@ export function ItemDetailPage() {
     </div>
     {!isOwnItem && <div className="card"><h2>{t('AIに商品について質問する')}</h2><form onSubmit={askAI} className="form"><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="例: 初心者にも使いやすいですか？" /><button type="submit" disabled={isAskingAI || !question.trim()}>{isAskingAI ? <span className="loadingInline"><span className="spinner" />{t('AIが回答を生成中...')}</span> : t('AIに聞く')}</button></form>{aiAnswerNotice && <p className="muted aiNoticeInline">{aiAnswerNotice}</p>}{aiAnswer && <TranslatedText text={aiAnswer} as="p" className="aiAnswer" />}</div>}
     <div className="card"><h2>公開コメント</h2><p className="muted">他ユーザーにも公開される質問・補足欄です。</p>{user ? <form onSubmit={sendComment} className="form commentForm"><textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="コメントを追加" /><button type="submit">コメントを追加</button></form> : <p className="muted">ログインするとコメントできます。</p>}<div className="messages">{threads.map((thread) => <div key={thread.parent.id} className="thread"><CommentBox message={thread.parent} canDelete={isOwnItem} onDelete={() => deleteComment(thread.parent.id)} /><div className="replies">{thread.replies.map((reply) => <CommentBox key={reply.id} message={reply} isReply canDelete={isOwnItem} onDelete={() => deleteComment(reply.id)} />)}</div>{user && <div className="replyForm"><input value={replyBodies[thread.parent.id] ?? ''} onChange={(e) => setReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このコメントに返信" /><button type="button" onClick={() => sendReply(thread.parent.id)}>返信</button></div>}</div>)}</div></div>
+    {user && <div className="card negotiationCard"><span className="aiBadge">AI価格交渉</span><h2>価格交渉アシスタント</h2><p className="muted">希望金額、商品情報、公開コメントの文脈を踏まえて、購入検討者・出品者それぞれの立場に合う丁寧な交渉メッセージを生成します。</p><form onSubmit={generateNegotiationMessage} className="form negotiationForm"><label>希望金額(円)<input value={negotiationPrice} onChange={(e) => { setError(''); setNegotiationPrice(e.target.value.replace(/\D/g, '')); }} inputMode="numeric" placeholder={String(Math.max(1, Math.round(item.priceYen * 0.9)))} /></label><button type="submit" disabled={isNegotiating || !negotiationPrice.trim()}>{isNegotiating ? <span className="loadingInline"><span className="spinner" />価格交渉文を生成中...</span> : isOwnItem ? '出品者向け文面を生成' : '購入検討者向け文面を生成'}</button></form>{negotiationNotice && <p className="muted aiNoticeInline">{negotiationNotice}</p>}{negotiationText && <div className="aiAnswer negotiationAnswer"><strong>生成されたテンプレート</strong><p>{negotiationText}</p></div>}</div>}
     {user && <div className="card"><h2>非公開DM</h2><p className="muted">購入検討者と出品者だけが見られるDMです。話題ごとに返信できます。</p><div className="messages">{privateThreads.map((thread) => <div key={thread.parent.id} className="thread"><PrivateMessageBox message={thread.parent} currentUserId={user.id} /><div className="replies">{thread.replies.map((reply) => <PrivateMessageBox key={reply.id} message={reply} currentUserId={user.id} isReply />)}</div><div className="replyForm"><input value={privateReplyBodies[thread.parent.id] ?? ''} onChange={(e) => setPrivateReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このDMに返信" /><button type="button" onClick={() => sendPrivateReply(thread.parent)}>返信</button></div></div>)}</div><form onSubmit={sendPrivate} className="form"><textarea value={privateBody} onChange={(e) => setPrivateBody(e.target.value)} placeholder="新しい非公開DMを入力" /><button type="submit">DMを送信</button></form></div>}
   </section>;
 }

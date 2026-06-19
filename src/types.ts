@@ -116,6 +116,35 @@ export type PurchaseHistory = {
 
 export type AuthResponse = { token: string; user: User };
 export type AITextResponse = { text: string; notice?: string; usedFallback?: boolean };
+
+// AIChatThread は、AI対話ページ左側に表示する「話題ごとの会話場所」です。
+// updatedAt を使って、最近使ったスレッドを上に出します。
+export type AIChatThread = {
+  id: number;
+  userId: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// AIChatMessage は、AI対話スレッド内の1つの吹き出しです。
+// role によって、ユーザー発言とAI回答の表示スタイルを切り替えます。
+export type AIChatMessage = {
+  id: number;
+  threadId: number;
+  role: 'user' | 'assistant';
+  body: string;
+  notice?: string;
+  usedFallback: boolean;
+  createdAt: string;
+};
+
+// AIChatTurnResponse は、1回の送信で保存されたユーザー発言とAI回答をまとめたものです。
+export type AIChatTurnResponse = {
+  thread: AIChatThread;
+  userMessage: AIChatMessage;
+  assistantMessage: AIChatMessage;
+};
 export type NaturalSearchResponse = {
   q?: string;
   category?: string;

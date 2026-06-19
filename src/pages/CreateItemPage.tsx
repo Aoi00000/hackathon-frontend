@@ -12,7 +12,7 @@ import { aiApi, authApi, itemApi } from '../api/client';
 import { ImageReorderGrid } from '../components/ImageReorderGrid';
 import { useAuth } from '../context/AuthContext';
 import { categories, colors, conditions, deliveryMethods, sizes } from '../formOptions';
-import { fileToCompressedDataUrl } from '../imageUpload';
+import { fileToMediaDataUrl } from '../imageUpload';
 import { stringifyImageUrls } from '../utils';
 
 function RequiredMark() {
@@ -119,10 +119,10 @@ export function CreateItemPage() {
     setError('');
     setIsImageConverting(true);
     try {
-      const converted = await Promise.all(files.map((file) => fileToCompressedDataUrl(file)));
+      const converted = await Promise.all(files.map((file) => fileToMediaDataUrl(file)));
       setImageUrls((current) => [...current, ...converted]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '画像の読み込みに失敗しました');
+      setError(e instanceof Error ? e.message : '画像・動画の読み込みに失敗しました');
     } finally {
       setIsImageConverting(false);
       setImageInputKey((current) => current + 1);
@@ -191,17 +191,17 @@ export function CreateItemPage() {
         <label><LabelText required example="500">価格(円)</LabelText><input value={priceInput} onChange={(e) => onPriceChange(e.target.value)} inputMode="numeric" required /></label>
 
         <label>
-          <LabelText>商品画像</LabelText>
-          <input key={imageInputKey} type="file" accept="image/*" multiple onChange={onImageFileChange} />
-          {isImageConverting && <span className="muted">画像を読み込んでいます...</span>}
+          <LabelText>商品画像・動画</LabelText>
+          <input key={imageInputKey} type="file" accept="image/*,video/*" multiple onChange={onImageFileChange} />
+          {isImageConverting && <span className="muted">画像・動画を読み込んでいます...</span>}
           {imageUrls.length > 0 && (
             <>
-              <p className="muted compactHint">画像をドラッグ&ドロップすると、商品詳細で表示される順番を変更できます。</p>
+              <p className="muted compactHint">画像・動画をドラッグ&ドロップすると、商品詳細で表示される順番を変更できます。</p>
               <ImageReorderGrid
                 imageUrls={imageUrls}
                 onChange={(next) => { clearErrorOnEdit(); setImageUrls(next); }}
                 onRemove={removeImage}
-                altPrefix="選択した商品画像"
+                altPrefix="選択した商品画像・動画"
               />
             </>
           )}

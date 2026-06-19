@@ -1,8 +1,8 @@
 /**
  * フロントエンド共通ユーティリティ。
  *
- * 金額表記、JST時刻表示、画像URL配列変換、評価星表示など、複数ページで使う処理を集約します。
- * 特に画像は、旧仕様の単一URLと新仕様の複数画像JSON配列の両方を扱うため、
+ * 金額表記、JST時刻表示、商品メディアURL配列変換、評価星表示など、複数ページで使う処理を集約します。
+ * 特に商品メディアは、旧仕様の単一画像URL、新仕様の複数画像JSON配列、動画Data URLのすべてを扱うため、
  * 各ページが独自にJSON.parseしないようここで吸収します。
  */
 export function formatDate(value?: string | null): string {
@@ -64,31 +64,45 @@ export function purchaseStatusLabel(status?: string): string {
   return '購入手続き完了';
 }
 
-export function normalizeImageUrl(url: string): string {
+export function isVideoUrl(url: string): boolean {
+  // Data URL動画と、一般的な動画拡張子URLを動画として扱います。
+  // 外部URLの場合は拡張子だけの簡易判定ですが、デモ用途では十分に機能します。
+  const trimmed = url.trim().toLowerCase();
+  return trimmed.startsWith('data:video/') || /\.(mp4|webm|ogg)(\?|#|$)/.test(trimmed);
+}
+
+export function normalizeMediaUrl(url: string): string {
+  // 画像・動画の両方に対応したURL正規化です。
+  // 旧名 normalizeImageUrl も下で残し、既存コンポーネントを壊さないようにします。
   const trimmed = url.trim();
   if (!trimmed) return '';
-  if (trimmed.startsWith('data:image/')) return trimmed;
+  if (trimmed.startsWith('data:image/') || trimmed.startsWith('data:video/')) return trimmed;
   const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (driveMatch) return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
   return trimmed;
 }
 
+export function normalizeImageUrl(url: string): string {
+  // 後方互換のための別名です。
+  // 実際には動画Data URLも通せるため、内部では normalizeMediaUrl を使います。
+  return normalizeMediaUrl(url);
+}
 
 export function parseImageUrls(value?: string | null): string[] {
-  // 商品画像は、従来の単一URL文字列と、新しい複数画像JSON配列の両方に対応します。
-  // 既存データを壊さずに複数アップロードへ拡張するため、DB列は image_url のまま使います。
+  // DB列名は image_url ですが、現在は画像・動画をまとめた商品メディア配列として扱います。
+  // 旧仕様の単一URL、新仕様の JSON.stringify([...])、改行区切りのURLをすべて読めるようにしています。
   const raw = String(value ?? '').trim();
   if (!raw) return [];
 
-  // 複数画像の場合は JSON.stringify([...]) した文字列として保存します。
-  // 例: ["data:image/...", "data:image/..."]
+  // 複数メディアの場合は JSON.stringify([...]) した文字列として保存します。
+  // 例: ["data:image/...", "data:video/..."]
   if (raw.startsWith('[')) {
     try {
       const parsed = JSON.parse(raw) as unknown;
       if (Array.isArray(parsed)) {
         return parsed
           .filter((x): x is string => typeof x === 'string')
-          .map((x) => normalizeImageUrl(x))
+          .map((x) => normalizeMediaUrl(x))
           .filter(Boolean);
       }
     } catch {
@@ -96,17 +110,17 @@ export function parseImageUrls(value?: string | null): string[] {
     }
   }
 
-  // 念のため、改行区切り・カンマ区切りで保存された文字列も読めるようにします。
-  // data:image/svg+xml にはカンマが含まれるため、data:imageの場合は分割しません。
-  if (!raw.startsWith('data:image/') && /\n/.test(raw)) {
-    return raw.split(/\n+/).map((x) => normalizeImageUrl(x)).filter(Boolean);
+  // 念のため、改行区切りで保存された文字列も読めるようにします。
+  // data:image/svg+xml や data:video にはカンマが含まれることがあるため、カンマ分割は行いません。
+  if (!raw.startsWith('data:image/') && !raw.startsWith('data:video/') && /\n/.test(raw)) {
+    return raw.split(/\n+/).map((x) => normalizeMediaUrl(x)).filter(Boolean);
   }
 
-  return [normalizeImageUrl(raw)].filter(Boolean);
+  return [normalizeMediaUrl(raw)].filter(Boolean);
 }
 
 export function stringifyImageUrls(urls: string[]): string {
-  // 空文字を除き、同じ画像が重複して入らないように整えます。
+  // 空文字を除き、同じメディアが重複して入らないように整えます。
   const cleaned = Array.from(new Set(urls.map((x) => x.trim()).filter(Boolean)));
   if (cleaned.length === 0) return '';
   if (cleaned.length === 1) return cleaned[0];
@@ -114,6 +128,11 @@ export function stringifyImageUrls(urls: string[]): string {
 }
 
 export function firstImageUrl(value?: string | null): string {
-  // 商品一覧・購入履歴などの小さいカードでは、複数画像の1枚目だけを代表画像として表示します。
+  // 商品一覧・購入履歴などの小さいカードでは、複数メディアの1件目だけを代表表示します。
   return parseImageUrls(value)[0] ?? '';
+}
+
+export function firstMediaUrl(value?: string | null): string {
+  // firstImageUrl の意味を新仕様に合わせて明確にした別名です。
+  return firstImageUrl(value);
 }

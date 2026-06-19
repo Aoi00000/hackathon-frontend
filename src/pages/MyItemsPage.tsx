@@ -4,11 +4,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { itemApi, meApi } from '../api/client';
 import { ImageReorderGrid } from '../components/ImageReorderGrid';
 import { categories, colors, conditions, deliveryMethods, sizes } from '../formOptions';
-import { fileToCompressedDataUrl } from '../imageUpload';
+import { fileToMediaDataUrl } from '../imageUpload';
 import { fuzzyIncludes, itemSearchText } from '../searchUtils';
 import type { Item } from '../types';
 import {
   firstImageUrl,
+  isVideoUrl,
   formatDate,
   formatYen,
   nextPurchaseStep,
@@ -69,10 +70,10 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
     setError('');
     setIsImageConverting(true);
     try {
-      const converted = await Promise.all(files.map((file) => fileToCompressedDataUrl(file)));
+      const converted = await Promise.all(files.map((file) => fileToMediaDataUrl(file)));
       setImageUrls((current) => [...current, ...converted]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '画像の読み込みに失敗しました');
+      setError(e instanceof Error ? e.message : '画像・動画の読み込みに失敗しました');
     } finally {
       setIsImageConverting(false);
       setImageInputKey((current) => current + 1);
@@ -184,21 +185,23 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
 
       {!isEditing ? (
         <>
-          {representativeImage && <img className="thumb" src={representativeImage} alt={item.title} />}
-          <p>{item.description}</p>
-          <dl className="meta compact">
-            <dt>カテゴリ</dt><dd>{item.category}</dd>
-            <dt>状態</dt><dd>{item.conditionText}</dd>
-            <dt>価格</dt><dd>{formatYen(item.priceYen)}</dd>
-            <dt>受け渡し</dt><dd>{item.deliveryMethod}</dd>
-            <dt>発送目安</dt><dd>{item.shippingDays}日</dd>
-            <dt>発送元</dt><dd>{item.shipFromRegion}</dd>
-            <dt>購入者</dt><dd>{item.buyerName || '-'}</dd>
-            <dt>お届け先</dt><dd>{item.buyerShippingAddress || '-'}</dd>
-            <dt>現在の取引状態</dt><dd>{item.purchaseStatus ? <span className={`purchaseStatusBadge ${item.purchaseStatus}`}>{purchaseStatusLabel(item.purchaseStatus)}</span> : '-'}</dd>
-            {next && <><dt>次の段階</dt><dd><strong>{next}</strong></dd></>}
-            <dt>チェック数</dt><dd>♡ {item.checklistCount}</dd>
-          </dl>
+          <Link className="historyCardLink" to={`/items/${item.id}`} aria-label={`${item.title} の商品情報詳細を開く`}>
+            {representativeImage && (isVideoUrl(representativeImage) ? <video className="thumb" src={representativeImage} muted playsInline /> : <img className="thumb" src={representativeImage} alt={item.title} />)}
+            <p>{item.description}</p>
+            <dl className="meta compact">
+              <dt>カテゴリ</dt><dd>{item.category}</dd>
+              <dt>状態</dt><dd>{item.conditionText}</dd>
+              <dt>価格</dt><dd>{formatYen(item.priceYen)}</dd>
+              <dt>受け渡し</dt><dd>{item.deliveryMethod}</dd>
+              <dt>発送目安</dt><dd>{item.shippingDays}日</dd>
+              <dt>発送元</dt><dd>{item.shipFromRegion}</dd>
+              <dt>購入者</dt><dd>{item.buyerName || '-'}</dd>
+              <dt>お届け先</dt><dd>{item.buyerShippingAddress || '-'}</dd>
+              <dt>現在の取引状態</dt><dd>{item.purchaseStatus ? <span className={`purchaseStatusBadge ${item.purchaseStatus}`}>{purchaseStatusLabel(item.purchaseStatus)}</span> : '-'}</dd>
+              {next && <><dt>次の段階</dt><dd><strong>{next}</strong></dd></>}
+              <dt>チェック数</dt><dd>♡ {item.checklistCount}</dd>
+            </dl>
+          </Link>
           <div className="actions">
             <Link className="button secondary" to={`/items/${item.id}`}>商品詳細を見る</Link>
             <button type="button" onClick={() => { setError(''); setIsEditing(true); }} disabled={!canEdit}>商品情報を編集</button>
@@ -215,20 +218,20 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
           <label>価格(円)<input value={priceInput} onChange={(e) => { clearErrorOnEdit(); setPriceInput(e.target.value.replace(/\D/g, '')); }} inputMode="numeric" required /></label>
 
           <label>
-            商品画像
-            <input key={imageInputKey} type="file" accept="image/*" multiple onChange={onImageFileChange} />
-            {isImageConverting && <span className="muted">画像を読み込んでいます...</span>}
+            商品画像・動画
+            <input key={imageInputKey} type="file" accept="image/*,video/*" multiple onChange={onImageFileChange} />
+            {isImageConverting && <span className="muted">画像・動画を読み込んでいます...</span>}
             {imageUrls.length > 0 ? (
               <>
-                <p className="muted compactHint">ドラッグ&ドロップで、商品詳細や一覧で使う画像順を変更できます。</p>
+                <p className="muted compactHint">ドラッグ&ドロップで、商品詳細や一覧で使う画像・動画の順番を変更できます。</p>
                 <ImageReorderGrid
                   imageUrls={imageUrls}
                   onChange={(next) => { clearErrorOnEdit(); setImageUrls(next); }}
                   onRemove={removeImage}
-                  altPrefix="編集中の商品画像"
+                  altPrefix="編集中の商品画像・動画"
                 />
               </>
-            ) : <span className="muted">画像は登録されていません。</span>}
+            ) : <span className="muted">画像・動画は登録されていません。</span>}
           </label>
 
           <label>受け渡し方法<select value={deliveryMethod} onChange={(e) => { clearErrorOnEdit(); setDeliveryMethod(e.target.value); }}>{deliveryMethods.map((x) => <option key={x}>{x}</option>)}</select></label>
@@ -268,15 +271,35 @@ export function MyItemsPage() {
   useEffect(() => { load(); }, []);
 
   // 「数学」⇔「すうがく」、「ギター」⇔「ぎたー」などを searchUtils で柔軟に判定します。
+  // 検索後に左右2列へ分けることで、検索対象としては全商品を保ちながら、表示は取引状態ごとに整理します。
   const filtered = useMemo(() => items.filter((item) => fuzzyIncludes(itemSearchText(item), query)), [items, query]);
 
+  // Available列は、売れ残り期間が長いものを上に出すため、更新時刻が古い順に並べます。
+  const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()), [filtered]);
+
+  // SOLD列は、直近の取引確認をしやすくするため、更新時刻が新しい順に並べます。
+  const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [filtered]);
+
   return (
-    <section className="stack">
+    <section className="stack fullWidthPage historySplitPage">
       {searchParams.get('created') === '1' && <p className="success">出品が完了しました。</p>}
       <div className="pageTitleRow"><h1>出品履歴</h1><Link className="button" to="/items/new">新しく出品する</Link></div>
       {error && <p className="error">{error}</p>}
       <div className="card inlineSearch"><label><span>出品履歴内検索</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="商品名、カテゴリ、購入者など" /></label></div>
-      {items.length === 0 ? <p className="muted">まだ出品した商品はありません。</p> : filtered.length === 0 ? <p className="muted">該当する商品はありません。</p> : filtered.map((item) => <EditableItemCard key={item.id} item={item} onChanged={load} />)}
+      {items.length === 0 ? <p className="muted">まだ出品した商品はありません。</p> : filtered.length === 0 ? <p className="muted">該当する商品はありません。</p> : (
+        <div className="historyTwoColumnLayout">
+          <section className="historyColumn availableColumn">
+            <div className="historyColumnHeader"><h2>Available</h2><span>{availableItems.length}件</span></div>
+            <p className="muted compactHint">更新時刻が古い順に表示します。長く売れ残っている商品を上から確認できます。</p>
+            <div className="historyColumnList">{availableItems.map((item) => <EditableItemCard key={item.id} item={item} onChanged={load} />)}{availableItems.length === 0 && <p className="muted emptyColumnText">該当するAvailable商品はありません。</p>}</div>
+          </section>
+          <section className="historyColumn soldColumn">
+            <div className="historyColumnHeader"><h2>SOLD</h2><span>{soldItems.length}件</span></div>
+            <p className="muted compactHint">更新時刻が新しい順に表示します。最近の取引状況をすぐ確認できます。</p>
+            <div className="historyColumnList">{soldItems.map((item) => <EditableItemCard key={item.id} item={item} onChanged={load} />)}{soldItems.length === 0 && <p className="muted emptyColumnText">該当するSOLD商品はありません。</p>}</div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

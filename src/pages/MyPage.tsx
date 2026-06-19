@@ -129,13 +129,13 @@ export function MyPage() {
       setError('');
       await meApi.createPaymentMethod({ ...paymentForm, expiryMonth, expiryYear, isDefault: paymentForm.isDefault || paymentMethods.length === 0 });
       setPaymentForm({ label: '', cardNumber: '', holderName: '', expiryMonth: '', expiryYear: '', securityCode: '', isDefault: true });
-      showSectionMessage('payments', '支払い方法を登録しました。');
+      showSectionMessage('payments', '支払い方法を登録しました。通知一覧にも記録しました。');
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : '支払い方法の登録に失敗しました'); }
   }
 
-  async function setDefaultPayment(id: number) { try { setError(''); await meApi.setDefaultPaymentMethod(id); showSectionMessage('payments', 'チャージに使用する支払い方法を変更しました。'); await load(); } catch (e) { setError(e instanceof Error ? e.message : '既定支払い方法の変更に失敗しました'); } }
-  async function deletePayment(id: number) { if (!confirm('この支払い方法を削除しますか？')) return; try { setError(''); await meApi.deletePaymentMethod(id); showSectionMessage('payments', '支払い方法を削除しました。'); await load(); } catch (e) { setError(e instanceof Error ? e.message : '支払い方法の削除に失敗しました'); } }
+  async function setDefaultPayment(id: number) { try { setError(''); await meApi.setDefaultPaymentMethod(id); showSectionMessage('payments', 'チャージに使用する支払い方法を変更しました。通知一覧にも記録しました。'); await load(); } catch (e) { setError(e instanceof Error ? e.message : '既定支払い方法の変更に失敗しました'); } }
+  async function deletePayment(id: number) { if (!confirm('この支払い方法を削除しますか？')) return; try { setError(''); await meApi.deletePaymentMethod(id); showSectionMessage('payments', '支払い方法を削除しました。通知一覧にも記録しました。'); await load(); } catch (e) { setError(e instanceof Error ? e.message : '支払い方法の削除に失敗しました'); } }
 
   async function updateProfile(event: FormEvent) { event.preventDefault(); try { setError(''); setProfile(await authApi.updateMe({ shippingRegion, shippingAddress })); showSectionMessage('profile', '発送元・お届け先住所を保存しました。'); } catch (e) { setError(e instanceof Error ? e.message : '保存に失敗しました'); } }
   async function sendSupport(event: FormEvent) { event.preventDefault(); if (!supportBody.trim()) { setError('運営への連絡内容を入力してください'); return; } try { setError(''); await meApi.support(supportSubject.trim() || '一般相談', supportBody); setSupportBody(''); showSectionMessage('support', '運営へ連絡しました。'); await load(); } catch (e) { setError(e instanceof Error ? e.message : '運営への連絡に失敗しました'); } }
