@@ -2,6 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { itemApi, meApi } from '../api/client';
+import { ImageReorderGrid } from '../components/ImageReorderGrid';
 import { categories, colors, conditions, deliveryMethods, sizes } from '../formOptions';
 import { fileToCompressedDataUrl } from '../imageUpload';
 import { fuzzyIncludes, itemSearchText } from '../searchUtils';
@@ -11,7 +12,6 @@ import {
   formatDate,
   formatYen,
   nextPurchaseStep,
-  normalizeImageUrl,
   parseImageUrls,
   purchaseStatusLabel,
   statusLabel,
@@ -219,14 +219,15 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
             <input key={imageInputKey} type="file" accept="image/*" multiple onChange={onImageFileChange} />
             {isImageConverting && <span className="muted">画像を読み込んでいます...</span>}
             {imageUrls.length > 0 ? (
-              <div className="imagePreviewGrid">
-                {imageUrls.map((url, index) => (
-                  <div className="imagePreviewWrap" key={`${url.slice(0, 40)}-${index}`}>
-                    <img className="imagePreview" src={normalizeImageUrl(url)} alt={`編集中の商品画像 ${index + 1}`} />
-                    <button type="button" className="imageRemoveButton" onClick={() => removeImage(index)} aria-label={`${index + 1}枚目の画像を削除`}>×</button>
-                  </div>
-                ))}
-              </div>
+              <>
+                <p className="muted compactHint">ドラッグ&ドロップで、商品詳細や一覧で使う画像順を変更できます。</p>
+                <ImageReorderGrid
+                  imageUrls={imageUrls}
+                  onChange={(next) => { clearErrorOnEdit(); setImageUrls(next); }}
+                  onRemove={removeImage}
+                  altPrefix="編集中の商品画像"
+                />
+              </>
             ) : <span className="muted">画像は登録されていません。</span>}
           </label>
 

@@ -7,7 +7,7 @@
  *
  * Goのnil sliceはJSONではnullになることがあるため、一覧系APIでは asArray で必ず配列へ正規化します。
  */
-import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User } from '../types';
+import type { AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User, MonthlyMoneySummary, PaymentMethod } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const tokenKey = 'hackathon_token';
@@ -101,6 +101,11 @@ export const meApi = {
   unblock: (userId: number) => request<{ ok: boolean }>(`/api/me/blocks/${userId}`, { method: 'DELETE' }),
   supportMessages: async () => asArray(await request<SupportMessage[]>('/api/me/support-messages')),
   support: (subject: string, body: string) => request<SupportMessage>('/api/me/support-messages', { method: 'POST', body: JSON.stringify({ subject, body }) }),
+  monthlyMoneySummary: async () => asArray(await request<MonthlyMoneySummary[]>('/api/me/monthly-money-summary')),
+  paymentMethods: async () => asArray(await request<PaymentMethod[]>('/api/me/payment-methods')),
+  createPaymentMethod: (payload: { label: string; cardNumber: string; holderName: string; expiryMonth: number; expiryYear: number; securityCode: string; isDefault: boolean }) => request<PaymentMethod>('/api/me/payment-methods', { method: 'POST', body: JSON.stringify(payload) }),
+  setDefaultPaymentMethod: (id: number) => request<{ ok: boolean }>(`/api/me/payment-methods/${id}/default`, { method: 'POST' }),
+  deletePaymentMethod: (id: number) => request<{ ok: boolean }>(`/api/me/payment-methods/${id}`, { method: 'DELETE' }),
   // API側でおすすめ対象が0件の場合、Goのnil sliceがJSON nullになることがあります。
   // そのままReact側で .length や .map を呼ぶと画面全体が落ちるため、
   // ここで必ず items を配列へ正規化します。
@@ -122,6 +127,7 @@ export const checklistApi = {
 export const messageApi = {
   list: async (itemId: number) => asArray(await request<Message[]>(`/api/items/${itemId}/messages`)),
   send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
+  delete: (itemId: number, messageId: number) => request<{ ok: boolean }>(`/api/items/${itemId}/messages/${messageId}`, { method: 'DELETE' }),
   listPrivate: async (itemId: number) => asArray(await request<PrivateMessage[]>(`/api/items/${itemId}/private-messages`)),
   sendPrivate: (itemId: number, body: string, receiverId?: number, parentMessageId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId, parentMessageId }) }),
 };
@@ -130,4 +136,5 @@ export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),
   parseSearch: (query: string) => request<NaturalSearchResponse>('/api/ai/parse-search', { method: 'POST', body: JSON.stringify({ query }) }),
+  chat: (message: string) => request<AITextResponse>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 };

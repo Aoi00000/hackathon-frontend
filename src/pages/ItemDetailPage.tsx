@@ -30,11 +30,11 @@ function buildPrivateThreads(messages: PrivateMessage[]): PrivateThread[] {
   return parents.map((p) => ({ parent: p, replies: replies.filter((r) => r.parentMessageId === p.id) }));
 }
 
-function CommentBox({ message, isReply }: { message: Message; isReply?: boolean }) {
+function CommentBox({ message, isReply, canDelete, onDelete }: { message: Message; isReply?: boolean; canDelete?: boolean; onDelete?: () => void }) {
   // 公開コメントの表示時刻は createdAt を使います。
   // 返信が追加されたときに親コメントの updatedAt をスレッド並び替え用に更新するため、
   // updatedAt を表示すると、過去の親コメント時刻まで最新返信時刻に見えてしまいます。
-  return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.isSeller ? 'sellerMessage' : ''}`}><div className="messageHeader"><strong className={message.isSeller ? 'sellerName' : ''}>{message.senderName}</strong>{message.isSeller && <span className="sellerBadge">出品者</span>}<span className="muted">{formatDate(message.createdAt)}</span></div><p>{message.body}</p></div>;
+  return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.isSeller ? 'sellerMessage' : ''}`}><div className="messageHeader"><div className="messageAuthorRow"><strong className={message.isSeller ? 'sellerName' : ''}>{message.senderName}</strong>{message.isSeller && <span className="sellerBadge">出品者</span>}</div><span className="muted">{formatDate(message.createdAt)}</span>{canDelete && <button type="button" className="smallDangerButton" onClick={onDelete}>削除</button>}</div><p>{message.body}</p></div>;
 }
 
 function PrivateMessageBox({ message, currentUserId, isReply }: { message: PrivateMessage; currentUserId: number; isReply?: boolean }) {
@@ -146,6 +146,18 @@ export function ItemDetailPage() {
 
   async function sendComment(event: FormEvent) { event.preventDefault(); if (!item || !user || !commentBody.trim()) return; setError(''); try { await messageApi.send(item.id, commentBody); setCommentBody(''); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'コメント送信に失敗しました'); } }
   async function sendReply(parentId: number) { if (!item || !user) return; const body = replyBodies[parentId]?.trim(); if (!body) return; setError(''); try { await messageApi.send(item.id, body, parentId); setReplyBodies((c) => ({ ...c, [parentId]: '' })); await load(); } catch (e) { setError(e instanceof Error ? e.message : '返信に失敗しました'); } }
+
+  async function deleteComment(messageId: number) {
+    if (!item || !user || user.id !== item.sellerId) return;
+    if (!confirm('この公開コメントを削除しますか？返信がある場合は返信も削除されます。')) return;
+    setError('');
+    try {
+      await messageApi.delete(item.id, messageId);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'コメント削除に失敗しました');
+    }
+  }
   async function sendPrivate(event: FormEvent) { event.preventDefault(); if (!item || !user || !privateBody.trim()) return; setError(''); try { await messageApi.sendPrivate(item.id, privateBody, item.sellerId === user.id ? privateMessages.find((m) => m.senderId !== user.id)?.senderId : undefined); setPrivateBody(''); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'DM送信に失敗しました'); } }
   async function sendPrivateReply(parent: PrivateMessage) { if (!item || !user) return; const body = privateReplyBodies[parent.id]?.trim(); if (!body) return; const receiverId = parent.senderId === user.id ? parent.receiverId : parent.senderId; setError(''); try { await messageApi.sendPrivate(item.id, body, receiverId, parent.id); setPrivateReplyBodies((c) => ({ ...c, [parent.id]: '' })); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'DM返信に失敗しました'); } }
   async function toggleBlockSeller() {
@@ -202,7 +214,7 @@ export function ItemDetailPage() {
       {error && <p className="error">{error}</p>}
     </div>
     {!isOwnItem && <div className="card"><h2>{t('AIに商品について質問する')}</h2><form onSubmit={askAI} className="form"><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="例: 初心者にも使いやすいですか？" /><button type="submit" disabled={isAskingAI || !question.trim()}>{isAskingAI ? <span className="loadingInline"><span className="spinner" />{t('AIが回答を生成中...')}</span> : t('AIに聞く')}</button></form>{aiAnswerNotice && <p className="muted aiNoticeInline">{aiAnswerNotice}</p>}{aiAnswer && <TranslatedText text={aiAnswer} as="p" className="aiAnswer" />}</div>}
-    <div className="card"><h2>公開コメント</h2><p className="muted">他ユーザーにも公開される質問・補足欄です。</p>{user ? <form onSubmit={sendComment} className="form commentForm"><textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="コメントを追加" /><button type="submit">コメントを追加</button></form> : <p className="muted">ログインするとコメントできます。</p>}<div className="messages">{threads.map((thread) => <div key={thread.parent.id} className="thread"><CommentBox message={thread.parent} /><div className="replies">{thread.replies.map((reply) => <CommentBox key={reply.id} message={reply} isReply />)}</div>{user && <div className="replyForm"><input value={replyBodies[thread.parent.id] ?? ''} onChange={(e) => setReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このコメントに返信" /><button type="button" onClick={() => sendReply(thread.parent.id)}>返信</button></div>}</div>)}</div></div>
+    <div className="card"><h2>公開コメント</h2><p className="muted">他ユーザーにも公開される質問・補足欄です。</p>{user ? <form onSubmit={sendComment} className="form commentForm"><textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="コメントを追加" /><button type="submit">コメントを追加</button></form> : <p className="muted">ログインするとコメントできます。</p>}<div className="messages">{threads.map((thread) => <div key={thread.parent.id} className="thread"><CommentBox message={thread.parent} canDelete={isOwnItem} onDelete={() => deleteComment(thread.parent.id)} /><div className="replies">{thread.replies.map((reply) => <CommentBox key={reply.id} message={reply} isReply canDelete={isOwnItem} onDelete={() => deleteComment(reply.id)} />)}</div>{user && <div className="replyForm"><input value={replyBodies[thread.parent.id] ?? ''} onChange={(e) => setReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このコメントに返信" /><button type="button" onClick={() => sendReply(thread.parent.id)}>返信</button></div>}</div>)}</div></div>
     {user && <div className="card"><h2>非公開DM</h2><p className="muted">購入検討者と出品者だけが見られるDMです。話題ごとに返信できます。</p><div className="messages">{privateThreads.map((thread) => <div key={thread.parent.id} className="thread"><PrivateMessageBox message={thread.parent} currentUserId={user.id} /><div className="replies">{thread.replies.map((reply) => <PrivateMessageBox key={reply.id} message={reply} currentUserId={user.id} isReply />)}</div><div className="replyForm"><input value={privateReplyBodies[thread.parent.id] ?? ''} onChange={(e) => setPrivateReplyBodies((c) => ({ ...c, [thread.parent.id]: e.target.value }))} placeholder="このDMに返信" /><button type="button" onClick={() => sendPrivateReply(thread.parent)}>返信</button></div></div>)}</div><form onSubmit={sendPrivate} className="form"><textarea value={privateBody} onChange={(e) => setPrivateBody(e.target.value)} placeholder="新しい非公開DMを入力" /><button type="submit">DMを送信</button></form></div>}
   </section>;
 }

@@ -9,6 +9,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { aiApi, authApi, itemApi } from '../api/client';
+import { ImageReorderGrid } from '../components/ImageReorderGrid';
 import { useAuth } from '../context/AuthContext';
 import { categories, colors, conditions, deliveryMethods, sizes } from '../formOptions';
 import { fileToCompressedDataUrl } from '../imageUpload';
@@ -194,14 +195,15 @@ export function CreateItemPage() {
           <input key={imageInputKey} type="file" accept="image/*" multiple onChange={onImageFileChange} />
           {isImageConverting && <span className="muted">画像を読み込んでいます...</span>}
           {imageUrls.length > 0 && (
-            <div className="imagePreviewGrid">
-              {imageUrls.map((url, index) => (
-                <div className="imagePreviewWrap" key={`${url.slice(0, 40)}-${index}`}>
-                  <img className="imagePreview" src={url} alt={`選択した商品画像 ${index + 1}`} />
-                  <button type="button" className="imageRemoveButton" onClick={() => removeImage(index)} aria-label={`${index + 1}枚目の画像を削除`}>×</button>
-                </div>
-              ))}
-            </div>
+            <>
+              <p className="muted compactHint">画像をドラッグ&ドロップすると、商品詳細で表示される順番を変更できます。</p>
+              <ImageReorderGrid
+                imageUrls={imageUrls}
+                onChange={(next) => { clearErrorOnEdit(); setImageUrls(next); }}
+                onRemove={removeImage}
+                altPrefix="選択した商品画像"
+              />
+            </>
           )}
         </label>
 

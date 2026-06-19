@@ -4,6 +4,7 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-r
 import { meApi } from './api/client';
 import { useAuth } from './context/AuthContext';
 import { ErrorBoundary } from './ErrorBoundary';
+import { AIChatPage } from './pages/AIChatPage';
 import { ChecklistPage } from './pages/ChecklistPage';
 import { CreateItemPage } from './pages/CreateItemPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
@@ -73,6 +74,7 @@ export function App() {
             <>
               <Link to="/items/new">出品する</Link>
               <Link to="/my/items">出品履歴</Link>
+              <Link to="/ai-chat">AI対話</Link>
               <Link to="/my/purchases">購入履歴</Link>
               <Link to="/my/checklist">チェックリスト</Link>
               <Link className="notificationNav" to="/my/notifications" aria-label={`通知 ${notificationCount}件`}>
@@ -103,6 +105,7 @@ export function App() {
             <Route path="/items/:id" element={<ItemDetailPage />} />
             <Route path="/items/:id/purchase" element={user ? <PurchaseFlowPage /> : <Navigate to="/login" />} />
             <Route path="/my/items" element={user ? <MyItemsPage /> : <Navigate to="/login" />} />
+            <Route path="/ai-chat" element={user ? <AIChatPage /> : <Navigate to="/login" />} />
             <Route path="/my/purchases" element={user ? <PurchaseHistoryPage /> : <Navigate to="/login" />} />
             <Route path="/my/checklist" element={user ? <ChecklistPage /> : <Navigate to="/login" />} />
             <Route path="/my/notifications" element={user ? <NotificationsPage /> : <Navigate to="/login" />} />

@@ -146,3 +146,16 @@ export type Notification = { id: number; userId: number; itemId?: number; title:
 export type SavedSearch = { id: number; userId: number; name: string; queryJson: string; createdAt: string };
 export type BlockedUser = { id: number; blockerId: number; blockedId: number; blockedName: string; createdAt: string };
 export type SupportMessage = { id: number; userId: number; userName: string; subject: string; body: string; createdAt: string };
+
+export type MonthlyMoneySummary = { month: string; salesYen: number; spendYen: number };
+export type PaymentMethod = {
+  id: number;
+  userId: number;
+  label: string;
+  cardLast4: string;
+  holderName: string;
+  expiryMonth: number;
+  expiryYear: number;
+  isDefault: boolean;
+  createdAt: string;
+};

@@ -1615,3 +1615,117 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ------------------------------------------------------------
+   追加実装: 画像並び替え、月別収支、支払い方法、AI対話
+   ------------------------------------------------------------ */
+.compactHint { margin: 6px 0 0; font-size: 13px; }
+.reorderableImageGrid { gap: 16px; }
+.reorderableImage {
+  cursor: grab;
+  padding: 8px;
+  border: 2px dashed transparent;
+  border-radius: 16px;
+  background: #f8fafc;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease, opacity .12s ease;
+}
+.reorderableImage:active { cursor: grabbing; }
+.reorderableImage.dragging { opacity: .55; transform: scale(.98); }
+.reorderableImage.dragOver { border-color: #2563eb; background: #eff6ff; }
+.imageOrderBadge {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #2563eb;
+  color: white;
+  font-size: 13px;
+  font-weight: 1000;
+  box-shadow: 0 2px 8px rgba(15,23,42,.2);
+}
+.imageDragHint {
+  display: block;
+  margin-top: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.myPageSurface .colorfulCard { position: relative; overflow: hidden; }
+.myPageSurface .colorfulCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: #2563eb;
+}
+.walletColorCard { background: linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #ecfdf5 100%); border-color: #bfdbfe; }
+.walletColorCard::before { background: linear-gradient(180deg, #2563eb, #16a34a); }
+.moneyTrendCard { background: linear-gradient(135deg, #fff7ed, #ffffff); border-color: #fed7aa; }
+.moneyTrendCard::before { background: #f97316; }
+.chargeCard { background: linear-gradient(135deg, #ecfeff, #ffffff); border-color: #a5f3fc; }
+.chargeCard::before { background: #0891b2; }
+.paymentCard { background: linear-gradient(135deg, #f5f3ff, #ffffff); border-color: #ddd6fe; }
+.paymentCard::before { background: #7c3aed; }
+.addressCard { background: linear-gradient(135deg, #f0fdf4, #ffffff); border-color: #bbf7d0; }
+.addressCard::before { background: #16a34a; }
+.savedSearchColorCard { background: linear-gradient(135deg, #f0f9ff, #ffffff); border-color: #bae6fd; }
+.savedSearchColorCard::before { background: #0284c7; }
+.blockColorCard { background: linear-gradient(135deg, #fff1f2, #ffffff); border-color: #fecdd3; }
+.blockColorCard::before { background: #e11d48; }
+.supportColorCard, .supportHistoryColorCard { background: linear-gradient(135deg, #faf5ff, #ffffff); border-color: #e9d5ff; }
+.supportColorCard::before, .supportHistoryColorCard::before { background: #9333ea; }
+.moneyChart { display: grid; gap: 14px; }
+.moneyChartLegend { display: flex; gap: 12px; align-items: center; font-weight: 900; }
+.moneyChartLegend span { display: inline-flex; align-items: center; gap: 6px; }
+.moneyChartLegend span::before { content: ''; width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.salesLegend::before { background: #22c55e; }
+.spendLegend::before { background: #f97316; }
+.moneyChartPlot {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  align-items: end;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.78);
+  border: 1px solid #fed7aa;
+}
+.moneyChartMonth { display: grid; justify-items: center; gap: 8px; }
+.moneyBars { height: 160px; display: flex; align-items: end; gap: 7px; }
+.moneyBar { width: 24px; min-height: 4px; border-radius: 8px 8px 3px 3px; position: relative; box-shadow: 0 8px 14px rgba(15,23,42,.08); }
+.moneyBar span { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%) rotate(-12deg); font-size: 10px; white-space: nowrap; color: #334155; font-weight: 900; }
+.salesBar { background: linear-gradient(180deg, #86efac, #16a34a); }
+.spendBar { background: linear-gradient(180deg, #fdba74, #ea580c); }
+.paymentMethodList { display: grid; gap: 12px; margin: 12px 0 18px; }
+.paymentMethodCard { display: flex; justify-content: space-between; gap: 14px; align-items: center; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid #e9d5ff; }
+.paymentMethodCard.default { border-color: #7c3aed; box-shadow: 0 8px 22px rgba(124,58,237,.12); }
+.paymentMethodCard p { margin: 4px 0; color: #475569; font-weight: 650; }
+.defaultBadge { display: inline-block; width: fit-content; border-radius: 999px; padding: 4px 9px; background: #ede9fe; color: #5b21b6; font-size: 12px; font-weight: 1000; }
+.paymentForm { margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd6fe; }
+.formTwoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.checkboxLabel { display: flex !important; grid-template-columns: none !important; flex-direction: row; align-items: center; gap: 8px; }
+.checkboxLabel input { width: auto; }
+.smallDangerButton { background: #ef4444; color: white; font-size: 12px; padding: 5px 9px; border-radius: 999px; }
+.messageAuthorRow { display: inline-flex; align-items: center; gap: 8px; }
+.aiChatHero { background: linear-gradient(135deg, #dbeafe, #f5f3ff 55%, #fff7ed); border-color: #c7d2fe; }
+.examplePromptList { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.aiChatWindow { display: grid; gap: 16px; }
+.chatMessages { display: grid; gap: 12px; max-height: 520px; overflow: auto; padding: 8px; }
+.chatBubble { max-width: min(760px, 88%); padding: 14px 16px; border-radius: 18px; white-space: pre-wrap; box-shadow: 0 8px 20px rgba(15,23,42,.06); }
+.chatBubble p { margin: 6px 0 0; line-height: 1.7; }
+.chatBubble.user { justify-self: end; background: #2563eb; color: white; border-bottom-right-radius: 6px; }
+.chatBubble.assistant { justify-self: start; background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; border-bottom-left-radius: 6px; }
+.aiChatForm { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+.aiChatForm textarea { min-height: 76px; }
+@media (max-width: 720px) {
+  .paymentMethodCard { align-items: stretch; flex-direction: column; }
+  .formTwoColumns, .aiChatForm { grid-template-columns: 1fr; }
+  .chatBubble { max-width: 100%; }
+}
