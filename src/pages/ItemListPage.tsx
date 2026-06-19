@@ -350,9 +350,9 @@ export function ItemListPage() {
         <div className="marketMain">
           <div className="hero compactHero smartHero">
             <div className="heroMessage">
-              <p className="eyebrow">AI Flea Market</p>
+              <p className="eyebrow">Regatear ~ AI Flea Market ~</p>
               <h1>{t('AIが出品と購入判断を支援する次世代フリマ')}</h1>
-              <p>出品文生成、購入前チェック、自然言語検索で、探す・売る・買うをまとめて支援します。</p>
+              <p>出品文生成、購入前チェック、自然言語検索、AI対話などを通して、探す・売る・買うをまとめて支援します。</p>
             </div>
             <form className="naturalSearchBox" onSubmit={submitNaturalLanguageSearch}>
               <strong>生成AIで自然言語検索</strong>

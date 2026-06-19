@@ -67,7 +67,7 @@ export function App() {
   return (
     <>
       <header className="header">
-        <Link className="logo" to="/">AI Flea Market</Link>
+        <Link className="logo" to="/">Regatear</Link>
         <nav className="nav">
           <Link to="/">商品一覧</Link>
           {isLoggedIn ? (
