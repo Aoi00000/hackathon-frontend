@@ -4,31 +4,44 @@
  * 役割:
  * React画面で例外が発生しても白画面にせず、ユーザーへ復旧導線を示します。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * Reactの描画例外を最上位で受け止め、白画面ではなく再読み込み可能な案内に変換します。
+ * 商品画像、AI回答、APIレスポンスの想定外データで子コンポーネントが落ちても、アプリ全体の説明やデモを続けられるようにする保険です。
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// Props は、ErrorBoundaryで保護したい子要素を受け取るための型です。
+// App全体をchildrenとして包むことで、どこかの画面で例外が出ても白画面ではなく復旧用UIを表示できます。
 type Props = { children: ReactNode };
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// State は、Reactの描画中に捕捉したエラーを保持します。
+// errorがnullなら通常表示、Errorオブジェクトが入ればフォールバック画面へ切り替える単純な状態管理です。
 type State = { error: Error | null };
 
+// ErrorBoundary は、Reactクラスコンポーネントでしか実装できないエラー境界です。
+// 子コンポーネントのrender中エラーを受け止め、デモ中や開発中にアプリ全体が真っ白になる状況を避けます。
 export class ErrorBoundary extends Component<Props, State> {
+  // state.error は、最後に捕捉した描画エラーです。
+  // 初期値はnullにし、問題が起きるまでは通常通りchildrenを描画します。
   state: State = { error: null };
 
+  // getDerivedStateFromError は、Reactがエラーを検知した直後にstateを更新する特別な静的メソッドです。
+  // ここでerrorを保存すると、次のrenderでフォールバックUIへ切り替わります。
   static getDerivedStateFromError(error: Error): State {
     return { error };
   }
 
+  // componentDidCatch は、エラー内容とコンポーネントスタックをログへ残すためのライフサイクルです。
+  // ユーザーには簡単なメッセージだけを見せ、開発者はConsoleから原因を追えるようにします。
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Route rendering failed:', error, info);
   }
 
+  // render は、エラーがあればフォールバック画面、なければ通常の子画面を返します。
+  // ErrorBoundary自体は業務ロジックを持たず、表示失敗時の最後の安全網として働きます。
   render() {
     if (this.state.error) {
       return (

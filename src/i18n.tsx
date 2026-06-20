@@ -4,12 +4,12 @@
  * 役割:
  * 英語切替廃止後の互換レイヤーとして、翻訳キーではなく日本語文をそのまま扱います。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 画面文言とカテゴリ・状態ラベルの翻訳入口です。
+ * 現在は日本語固定ですが、Contextにしておくことで画面側は言語切替の実装詳細を意識せずt関数だけを呼べます。
  */
 /**
  * 日本語固定の表示互換レイヤー。
@@ -23,22 +23,23 @@ import type { ReactNode } from 'react';
 // 英語化機能は今回の実装対象から外し、日本語表示だけに統一します。
 // 既存ページは useI18n().t(...) を呼んでいるため、APIの形だけ残し、
 // 表示文言は常に日本語キーをそのまま返すようにしています。
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export type Lang = 'ja';
 
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// I18nValue は、画面が言語状態と翻訳関数へアクセスするためのContext値です。
+// 現在は日本語固定ですが、型を残すことで既存コンポーネントを大きく変更せずに運用できます。
 type I18nValue = {
   lang: Lang;
   setLang: (_lang: Lang) => void;
   t: (key: string) => string;
 };
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// I18nContext は、アプリ全体へ現在言語と翻訳関数を配るReact Contextです。
+// 現在は日本語固定でも、既存コンポーネントが同じuseI18n APIで文言を取得できるように残しています。
 const I18nContext = createContext<I18nValue | null>(null);
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// I18nProvider は、アプリ配下のコンポーネントへ t 関数を提供します。
+// setLangは互換性のために残したno-opで、tは受け取った日本語文言をそのまま返します。
 export function I18nProvider({ children }: { children: ReactNode }) {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const value = useMemo<I18nValue>(() => ({
     lang: 'ja',
     setLang: () => { /* no-op: 日本語固定 */ },
@@ -47,16 +48,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// useI18n は、各画面から翻訳関数を取り出すためのカスタムフックです。
+// Providerの外で呼ばれた場合は実装ミスがすぐ分かるよう、明示的にエラーを投げます。
 export function useI18n(): I18nValue {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const value = useContext(I18nContext);
   if (!value) throw new Error('useI18n must be used inside I18nProvider');
   return value;
 }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// translateKnownValue は、過去の英語切替実装で使っていた値変換関数の互換口です。
+// 現在はDB値も画面表示も日本語へ統一しているため、入力値をそのまま返します。
 export function translateKnownValue(value: string, _lang?: Lang): string {
   return value;
 }

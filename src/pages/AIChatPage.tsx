@@ -4,12 +4,12 @@
  * 役割:
  * 話題ごとのAI対話スレッドを表示し、会話履歴をDBに残すAI相談画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * ユーザーの自由相談をスレッド単位でDBに保存し、左側の話題一覧と右側の会話履歴を同期します。
+ * 外部AIが失敗した場合もusedFallback/noticeを表示できるため、生成AI機能の状態をデモ中に説明しやすい画面です。
  */
 /**
  * AI対話ページ。
@@ -26,7 +26,6 @@ import { formatDate } from '../utils';
 
 // デモでワンクリック送信しやすい例文です。
 // 「次世代フリマ」らしく、生活相談から自然におすすめグッズへつなげられる題材にしています。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 const examples = [
   '休日の遊びのおすすめない？',
   '家の模様替えをしてみたいんだけどいい案ない？',
@@ -36,7 +35,6 @@ const examples = [
 
 // 空スレッドや読み込み直後に表示する案内用メッセージです。
 // DBには保存せず、UI上だけに出すことで履歴データを汚さないようにします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 const welcomeMessage: AIChatMessage = {
   id: 0,
   threadId: 0,
@@ -48,59 +46,43 @@ const welcomeMessage: AIChatMessage = {
 
 // スレッド一覧は、更新されたものが上に来る方が会話アプリらしく使いやすいです。
 // 送信直後に返ってきた updatedAt を使い、フロント側でも即座に並び替えます。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function sortThreads(threads: AIChatThread[]): AIChatThread[] {
   return [...threads].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
 // 既存スレッドを更新するか、まだリストにない新規スレッドを先頭へ足します。
 // 新規作成直後・メッセージ送信直後のどちらにも使えるようにしています。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function upsertThread(threads: AIChatThread[], next: AIChatThread): AIChatThread[] {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const without = threads.filter((thread) => thread.id !== next.id);
   return sortThreads([next, ...without]);
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// AIChatPage は、DBに保存されるAI対話スレッドとメッセージを操作する画面です。
+// 左で話題を選び、右で会話を続ける構成にして、フリマ相談や商品提案の履歴を後から読み返せるようにします。
 export function AIChatPage() {
   // 入力欄に現在打っている相談文です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [input, setInput] = useState('');
   // 左側サイドバーに出すAI対話スレッド一覧です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [threads, setThreads] = useState<AIChatThread[]>([]);
   // 現在開いているスレッドIDです。nullなら、まだ話題が選ばれていない状態です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
   // 右側チャット欄に出す、選択中スレッドのメッセージ履歴です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   // API通信中にボタンを二重押しできないようにするためのフラグです。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isLoading, setIsLoading] = useState(false);
   // 画面上部に出すエラーメッセージです。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
 
   // activeThreadIdから、現在選択中のスレッド本体を取り出します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const activeThread = useMemo(() => threads.find((thread) => thread.id === activeThreadId) ?? null, [threads, activeThreadId]);
 
   // 初回表示時に、DBへ保存済みのAI対話スレッドを読み込みます。
   // 既存スレッドがあれば一番新しいものを自動選択し、なければ空状態のまま案内を表示します。
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
     async function loadThreads() {
       try {
         setError('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const list = sortThreads(await aiApi.chatThreads());
         if (cancelled) return;
         setThreads(list);
@@ -115,9 +97,7 @@ export function AIChatPage() {
 
   // 選択中スレッドが変わったら、そのスレッドの履歴をDBから読み込みます。
   // スレッド未選択なら、案内メッセージだけを表示します。
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
     async function loadMessages() {
       if (!activeThreadId) {
@@ -126,7 +106,6 @@ export function AIChatPage() {
       }
       try {
         setError('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const history = await aiApi.chatMessages(activeThreadId);
         if (cancelled) return;
         setMessages(history.length > 0 ? history : [{ ...welcomeMessage, threadId: activeThreadId }]);
@@ -144,7 +123,6 @@ export function AIChatPage() {
     setError('');
     setIsLoading(true);
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const thread = await aiApi.createChatThread(title);
       setThreads((current) => upsertThread(current, thread));
       setActiveThreadId(thread.id);
@@ -166,7 +144,6 @@ export function AIChatPage() {
     try {
       await aiApi.deleteChatThread(threadId);
       setThreads((current) => {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const next = current.filter((thread) => thread.id !== threadId);
         if (activeThreadId === threadId) setActiveThreadId(next[0]?.id ?? null);
         return next;
@@ -180,7 +157,6 @@ export function AIChatPage() {
   // スレッド未選択の場合は、最初の相談文をタイトルにしてスレッドを自動作成してから送ります。
   async function submit(event?: FormEvent, preset?: string) {
     event?.preventDefault();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const text = (preset ?? input).trim();
     if (!text || isLoading) return;
 
@@ -189,10 +165,8 @@ export function AIChatPage() {
     setIsLoading(true);
 
     try {
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       let targetThreadId = activeThreadId;
       if (!targetThreadId) {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const thread = await aiApi.createChatThread(text);
         setThreads((current) => upsertThread(current, thread));
         setActiveThreadId(thread.id);
@@ -201,8 +175,6 @@ export function AIChatPage() {
 
       // welcomeMessageはDB由来ではないため、実際の発言を追加する直前に取り除きます。
       setMessages((current) => current.filter((message) => message.id !== 0));
-
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const result = await aiApi.sendChatMessage(targetThreadId, text);
       setThreads((current) => upsertThread(current, result.thread));
       setActiveThreadId(result.thread.id);

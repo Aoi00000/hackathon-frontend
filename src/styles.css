@@ -1,4 +1,10 @@
 /* 全体の基本スタイル。ハッカソンでは見た目の一貫性を短時間で出すため、CSSを一つにまとめています。 */
+
+/*
+ * 実装詳細メモ:
+ * アプリ全体の画面部品、商品一覧、詳細、マイページ、AIチャットまでをまとめたスタイルシートです。
+ * クラス名は各TSXのclassNameと直接対応し、機能ごとの見た目を探しやすいようセクション単位で読む前提です。
+ */
 :root {
   color: #182026;
   background: #f5f7fb;
@@ -9,6 +15,8 @@ body {
   margin: 0;
 }
 
+/* ブラウザ標準のリンク、ボタン、フォーム部品を軽く統一します。
+   各ページは細かいresetを書かず、業務UIのclassだけに集中できます。 */
 a {
   color: inherit;
   text-decoration: none;
@@ -41,6 +49,8 @@ textarea {
   min-height: 96px;
 }
 
+/* App.tsxの共通ヘッダーです。
+   商品一覧、出品、マイページ、通知、AIチャットへ常に移動できるようstickyで固定します。 */
 .header {
   position: sticky;
   top: 0;
@@ -77,6 +87,7 @@ textarea {
   margin-bottom: 24px;
 }
 
+/* card/narrow/formは、ログイン・登録・出品・マイページのフォーム系画面で共有する基本面です。 */
 .card {
   background: white;
   border: 1px solid #e2e8f0;
@@ -117,6 +128,8 @@ textarea {
   gap: 18px;
 }
 
+/* 商品カードは一覧、チェックリスト、購入履歴で再利用します。
+   hover時の浮き上がりはクリック可能な商品であることを示すための視覚フィードバックです。 */
 .itemCard {
   overflow: hidden;
   border-radius: 18px;
@@ -172,6 +185,8 @@ textarea {
   color: #991b1b;
 }
 
+/* 商品詳細ページのメイン領域です。
+   画像、商品属性、コメント、購入前チェックが縦に並ぶため、基本はgrid gapだけで余白を制御します。 */
 .detail {
   display: grid;
   gap: 18px;
@@ -222,6 +237,8 @@ textarea {
   color: #64748b;
 }
 
+/* AI回答は通常本文と区別できるよう薄い青の面に置きます。
+   改行を含む生成文をそのまま読めるようwhite-space: pre-wrapを指定しています。 */
 .aiAnswer {
   white-space: pre-wrap;
   padding: 14px;
@@ -433,6 +450,7 @@ textarea {
 .flow li.done { background: #dcfce7; color: #166534; }
 .flow li.current { background: #dbeafe; color: #1d4ed8; }
 .purchaseLayout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
 /* マイページ上部の残高・利用額・評価サマリーです。
    1列目は残高を大きく、2列目は月次/累計の収支、3列目は出品者評価を表示します。 */
 .wallet { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
@@ -1151,6 +1169,8 @@ textarea {
 }
 
 /* AI / レコメンド表示 */
+/* ItemListPageとItemDetailPageで使うおすすめ商品枠です。
+   レコメンドは主導線ではなく補助情報なので、カードを小さめにして商品一覧の邪魔をしない密度にしています。 */
 .recommendationStrip {
   margin-bottom: 12px;
   padding: 14px;
@@ -1315,6 +1335,8 @@ textarea {
 /* ------------------------------------------------------------
    複数画像アップロード・商品詳細画像カルーセル
    ------------------------------------------------------------ */
+/* CreateItemPage/MyItemsPageでは複数メディアのプレビュー、
+   ItemDetailPageでは登録済みメディアのカルーセルとして同じ視覚要素を使います。 */
 .imagePreviewGrid {
   display: flex;
   flex-wrap: wrap;
@@ -1706,6 +1728,8 @@ textarea {
 .messageAuthorRow { display: inline-flex; align-items: center; gap: 8px; }
 .aiChatHero { background: linear-gradient(135deg, #dbeafe, #f5f3ff 55%, #fff7ed); border-color: #c7d2fe; }
 
+/* AIChatPageの2ペイン構成です。
+   左のスレッド一覧はsticky、右の会話欄はスクロール可能にして、長い相談履歴でも話題を切り替えやすくします。 */
 .aiChatLayout { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .aiChatSidebar { position: sticky; top: 86px; display: grid; gap: 14px; max-height: calc(100vh - 110px); overflow: auto; }
 .sectionHeaderCompact { display: flex; justify-content: space-between; align-items: center; gap: 12px; }

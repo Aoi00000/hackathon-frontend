@@ -4,12 +4,12 @@
  * 役割:
  * 画像・動画をアップロード、削除、ドラッグ&ドロップで並び替える再利用コンポーネントです。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 出品画像をドラッグ操作で並び替えるための独立コンポーネントです。
+ * 先頭画像が商品カードの代表画像になるため、並び順の変更を親コンポーネントへ確実に返すことが重要です。
  */
 /**
  * 商品メディアのプレビューとドラッグ&ドロップ並び替えをまとめたコンポーネント。
@@ -23,37 +23,32 @@ import { DragEvent, useState } from 'react';
 
 import { isVideoUrl, normalizeImageUrl } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// moveItem は、ドラッグ元fromの要素をドラッグ先toへ移動した新しい配列を返します。
+// Reactでは既存配列を直接変更すると再描画や差分検知が分かりにくくなるため、コピーした配列を作って返します。
 function moveItem<T>(items: T[], from: number, to: number): T[] {
   // 配列の from 番目を取り出し、to 番目へ差し込むだけの小さなヘルパーです。
   // 不正なindexの場合は元配列をそのまま返し、ドラッグ中の誤操作で画面が壊れないようにします。
   if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items;
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const next = [...items];
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [removed] = next.splice(from, 1);
   next.splice(to, 0, removed);
   return next;
 }
-
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ImageReorderGridProps は、親コンポーネントから受け取るメディア配列と操作コールバックです。
+// このコンポーネントは状態を親に返す「制御コンポーネント」として動き、保存処理やフォーム状態は親が管理します。
 type ImageReorderGridProps = {
   imageUrls: string[];
   onChange: (next: string[]) => void;
   onRemove: (index: number) => void;
   altPrefix: string;
 };
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ImageReorderGrid は、商品メディアの表示・削除・順序変更を担当するUI部品です。
+// 先頭メディアが商品カードの代表画像として使われるため、並び順の変更は出品体験の重要な操作になります。
 export function ImageReorderGrid({ imageUrls, onChange, onRemove, altPrefix }: ImageReorderGridProps) {
   // draggingIndex は、今つかんでいるメディアの位置です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   // dragOverIndex は、今ドロップ候補になっているメディアの位置です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function onDragStart(event: DragEvent<HTMLDivElement>, index: number) {
     // ドラッグ開始時点のindexをstateとdataTransferの両方に保存します。
     // FirefoxではdataTransferへ何か入れないとdrag/dropが安定しないため、文字列として保存します。
@@ -62,8 +57,6 @@ export function ImageReorderGrid({ imageUrls, onChange, onRemove, altPrefix }: I
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', String(index));
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function onDragOver(event: DragEvent<HTMLDivElement>, index: number) {
     // dropを受け取るためにはdragOverでpreventDefaultが必要です。
     // ここで現在の候補indexも更新し、青い枠でドロップ先を示します。
@@ -71,19 +64,14 @@ export function ImageReorderGrid({ imageUrls, onChange, onRemove, altPrefix }: I
     event.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function onDrop(event: DragEvent<HTMLDivElement>, index: number) {
     // ドロップされたら、保存しておいたfromから今回のindexへメディアを移動します。
     event.preventDefault();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const from = draggingIndex ?? Number(event.dataTransfer.getData('text/plain'));
     if (Number.isInteger(from)) onChange(moveItem(imageUrls, from, index));
     setDraggingIndex(null);
     setDragOverIndex(null);
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function onDragEnd() {
     // ドラッグが中断された場合も、見た目の状態が残らないように必ず初期化します。
     setDraggingIndex(null);
@@ -95,9 +83,7 @@ export function ImageReorderGrid({ imageUrls, onChange, onRemove, altPrefix }: I
       {imageUrls.map((url, index) => {
         // 画像と動画でプレビュー要素を切り替えます。
         // normalizeImageUrl は互換名ですが、内部的には動画Data URLもそのまま通します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const normalizedUrl = normalizeImageUrl(url);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const video = isVideoUrl(normalizedUrl);
         return (
           <div

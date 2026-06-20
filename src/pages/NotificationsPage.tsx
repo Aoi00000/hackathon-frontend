@@ -4,12 +4,12 @@
  * 役割:
  * 購入・出品・支払い方法・AI販売改善提案などの通知を確認し、既読化できる画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * コメント、購入状態、保存検索、AI販売改善提案などの通知を一覧化します。
+ * 通知のitemIdや本文から遷移先を決めるため、単純なメッセージ一覧ではなく次の行動に接続する画面です。
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,8 @@ import { meApi } from '../api/client';
 import type { Notification } from '../types';
 import { formatDate } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// targetPath は、通知の内容から次に開くべき画面URLを決めます。
+// 例えば購入者向け通知は購入履歴、出品者向け通知は出品履歴へ送ることで、通知を確認した後の行動につなげます。
 function targetPath(n: Notification): string {
   if (n.title.includes('出品完了')) return '/my/items';
   if (n.title.includes('出品キャンセル完了')) return '/my/items';
@@ -31,9 +32,9 @@ function targetPath(n: Notification): string {
   return n.itemId ? `/items/${n.itemId}` : '/my';
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// targetLabel は、targetPathで決めた遷移先をボタン文言に変換します。
+// 通知カード内に「どこへ移動するボタンか」を明示し、商品詳細・購入履歴・出品履歴を区別しやすくします。
 function targetLabel(n: Notification): string {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const path = targetPath(n);
   if (path === '/my/purchases') return '購入履歴を見る';
   if (path === '/my/items') return '出品履歴を見る';
@@ -41,28 +42,26 @@ function targetLabel(n: Notification): string {
   return 'マイページを見る';
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// NotificationsPage は、ログインユーザーの通知を一覧表示し、既読化と関連画面への遷移を行う画面です。
+// 通知は商品取引、コメント、支払い、AI販売改善提案など複数機能から作られるため、ここで一元的に確認できます。
 export function NotificationsPage() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const navigate = useNavigate();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [notifications, setNotifications] = useState<Notification[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
 
+  // load は、本人宛て通知をAPIから取得して一覧stateへ反映します。
+  // 通知画面を開いた直後に最新状態を出すため、初回マウント時に呼び出します。
   async function load() {
     setError('');
     try { setNotifications(await meApi.notifications()); }
     catch (e) { setError(e instanceof Error ? e.message : '通知一覧の取得に失敗しました'); }
   }
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
+  // markRead は、通知1件を既読化し、返ってきた最新通知でローカルstateを差し替えます。
+  // ヘッダーの未読バッジにも反映するため、カスタムイベント notifications:changed を発火します。
   async function markRead(id: number) {
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const updated = await meApi.readNotification(id);
       setNotifications((current) => current.map((n) => (n.id === id ? updated : n)));
       window.dispatchEvent(new Event('notifications:changed'));

@@ -4,12 +4,12 @@
  * 役割:
  * 購入履歴を取引中/完了済みに分け、発送確認や受け取り評価へ進める画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 購入済み商品の進行状況を、発送待ち・受取評価待ち・完了に分けて表示します。
+ * 評価送信は購入完了APIと直結し、出品者の評価平均や取引数の更新につながります。
  */
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -19,25 +19,21 @@ import { fuzzyIncludes, itemSearchText } from '../searchUtils';
 import type { PurchaseHistory } from '../types';
 import { firstImageUrl, formatDate, formatYen, isVideoUrl, nextPurchaseStep, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// purchaseSearchText は、購入履歴1件を検索用の長い文字列へ変換します。
+// 商品名だけでなく出品者名やカテゴリも検索対象にすることで、過去の取引を思い出しやすくします。
 function purchaseSearchText(row: PurchaseHistory): string {
   // 購入履歴検索では、商品情報に加えて出品者名も検索対象にします。
   // itemSearchText は Item 風のオブジェクトを受け取るため、PurchaseHistoryにsellerNameを補って渡します。
   return itemSearchText({ ...row, sellerName: row.sellerName });
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// PurchaseHistoryCard は、購入履歴の商品1件と取引状態を表示するカードです。
+// shipped状態の取引では、同じカード内で受け取り評価を送れるようにし、取引完了までの導線を短くします。
 function PurchaseHistoryCard({ row, onComplete }: { row: PurchaseHistory; onComplete: (event: FormEvent, row: PurchaseHistory) => Promise<void> }) {
   // カード内で評価入力を持つため、各商品ごとに独立したstateを用意します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [rating, setRating] = useState('5');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [comment, setComment] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const next = nextPurchaseStep(row.purchaseStatus);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const representativeMedia = firstImageUrl(row.imageUrl);
 
   return (
@@ -93,19 +89,16 @@ function PurchaseHistoryCard({ row, onComplete }: { row: PurchaseHistory; onComp
   );
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// PurchaseHistoryPage は、購入者視点の取引履歴を「取引中」と「取引完了」に分けて表示します。
+// 発送待ちや受け取り評価待ちの取引を優先的に見つけられるよう、未完了取引を古い順に並べます。
 export function PurchaseHistoryPage() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [history, setHistory] = useState<PurchaseHistory[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [query, setQuery] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [searchParams] = useSearchParams();
 
+  // load は、本人の購入履歴をAPIから取得してstateへ入れます。
+  // 受け取り評価後にも呼び直すことで、purchaseStatusや評価情報を最新に保ちます。
   async function load() {
     setError('');
     try {
@@ -114,26 +107,20 @@ export function PurchaseHistoryPage() {
       setError(e instanceof Error ? e.message : '購入履歴の取得に失敗しました');
     }
   }
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
   // 検索対象は左右の列で共通です。
   // まず検索で全体を絞り込み、その後に未完了/完了へ分けることで、どちらの列の商品も検索できます。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const filtered = useMemo(() => history.filter((row) => fuzzyIncludes(purchaseSearchText(row), query)), [history, query]);
 
   // 未完了取引は、古いものから上に出すことで、対応が遅れている取引に気づきやすくします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const ongoing = useMemo(() => filtered.filter((row) => row.purchaseStatus !== 'completed').sort((a, b) => new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime()), [filtered]);
 
   // 完了済み取引は、新しいものから上に出すことで、最近の購入履歴を見返しやすくします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const completed = useMemo(() => filtered.filter((row) => row.purchaseStatus === 'completed').sort((a, b) => new Date(b.completedAt ?? b.purchasedAt).getTime() - new Date(a.completedAt ?? a.purchasedAt).getTime()), [filtered]);
 
+  // complete は、購入者の受け取り評価をバックエンドへ送る処理です。
+  // 完了すると出品者の評価平均・取引数・売上残高が更新されるため、送信後に履歴を再取得します。
   async function complete(event: FormEvent, row: PurchaseHistory) {
     event.preventDefault();
     try {

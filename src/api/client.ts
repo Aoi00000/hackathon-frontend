@@ -4,12 +4,12 @@
  * 役割:
  * フロントエンドからバックエンドAPIへアクセスする関数を集約し、認証ヘッダーやエラー処理を共通化します。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * fetchの共通処理でAPIベースURL、JSON化、認証ヘッダー、エラー文の抽出をまとめます。
+ * Goのnil sliceがJSON nullになる場合があるため、一覧系レスポンスはasArrayで必ず配列に正規化します。
  */
 /**
  * フロントエンドのAPIクライアント。
@@ -22,12 +22,16 @@
  */
 import type { AIChatMessage, AIChatThread, AIChatTurnResponse, AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User, MonthlyMoneySummary, PaymentMethod } from '../types';
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// API_BASE_URL は、ReactアプリがGoバックエンドへアクセスするときの接続先です。
+// Viteの環境変数がある本番/デプロイ環境ではそれを使い、未設定のローカル開発では8080番のGoサーバーへ接続します。
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// tokenKey は、ブラウザのsessionStorageへJWTを保存するときのキー名です。
+// setToken/getToken/clearTokenが同じ文字列を使うことで、ログイン状態の保存場所をこの1箇所で管理できます。
 const tokenKey = 'hackathon_token';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// Goのjsonエンコードではnil sliceがnullとして返ることがあります。
+// React側では一覧を常にmap/filterできる配列として扱いたいので、API境界で吸収します。
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -40,27 +44,28 @@ function asArray<T>(value: T[] | null | undefined): T[] {
 if (localStorage.getItem(tokenKey)) {
   localStorage.removeItem(tokenKey);
 }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// setToken は、ログイン成功時に受け取ったJWTを現在のブラウザセッションへ保存します。
+// このJWTはrequest関数でAuthorizationヘッダーに入り、本人確認が必要なAPIで使われます。
 export function setToken(token: string): void { sessionStorage.setItem(tokenKey, token); }
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// getToken は、保存済みJWTを取り出す小さな関数です。
+// トークンがなければnullを返し、request関数はAuthorizationヘッダーを付けずに公開APIとして呼び出します。
 export function getToken(): string | null { return sessionStorage.getItem(tokenKey); }
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// clearToken は、ログアウト時や認証状態を初期化したいときにJWTを削除します。
+// 旧実装のlocalStorageにも残骸がある可能性があるため、sessionStorageとlocalStorageの両方を消します。
 export function clearToken(): void { sessionStorage.removeItem(tokenKey); localStorage.removeItem(tokenKey); }
 
+// request はこのフロントエンドからバックエンドへ出る全HTTP通信の共通入口です。
+// 認証ヘッダー付与、JSONレスポンスの読み取り、Go側の {error: "..."} 形式の取り出しをここに集約します。
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const url = `${API_BASE_URL}${path}`;
   try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const response = await fetch(url, { ...options, headers });
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const data = await response.json().catch(() => null);
     if (!response.ok) throw new Error(data?.error ?? `API error: ${response.status}`);
     return data as T;
@@ -70,7 +75,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 }
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// authApi はログイン状態の作成・更新に関わるAPI群です。
+// 成功時に返るJWTはAuthContextで保存され、以降の本人APIや購入APIの認証に使われます。
 export const authApi = {
   register: (payload: { name: string; email: string; password: string }) => request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload: { email: string; password: string }) => request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
@@ -79,7 +85,8 @@ export const authApi = {
   charge: (amount: number) => request<User>('/api/me/charge', { method: 'POST', body: JSON.stringify({ amount }) }),
 };
 
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ItemSearchParams は商品一覧APIのクエリ文字列と1対1で対応します。
+// 複数選択のcategory/size/colorなどは、URLSearchParamsへ入れやすいようカンマ区切り文字列にします。
 export type ItemSearchParams = {
   q?: string;
   category?: string;
@@ -93,17 +100,18 @@ export type ItemSearchParams = {
   deliveryWithin?: string;
   sort?: string;
 };
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// 空文字の条件は検索クエリへ入れません。
+// これにより、未指定フィルタがバックエンドで「空文字に一致」と解釈される事故を防ぎます。
 function toQuery(params: ItemSearchParams): string {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => { if (v) sp.set(k, v); });
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const query = sp.toString();
   return query ? `?${query}` : '';
 }
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// itemApi は商品を中心とする公開/取引APIです。
+// 一覧・詳細は未ログインでも使え、出品・購入・発送・完了・交渉支援はJWTを必要とします。
 export const itemApi = {
   list: async (params: ItemSearchParams) => asArray(await request<Item[]>(`/api/items${toQuery(params)}`)),
   get: (id: number) => request<Item>(`/api/items/${id}`),
@@ -120,7 +128,8 @@ export const itemApi = {
   analysis: (id: number) => request<ItemAIAnalysis>(`/api/items/${id}/analysis`),
 };
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// meApi はログインユーザー本人に紐づくマイページ系APIです。
+// 残高、出品履歴、購入履歴、通知、保存検索、支払い方法など、userIdをURLに出さない安全な設計にしています。
 export const meApi = {
   items: async () => asArray(await request<Item[]>('/api/me/items')),
   purchases: async () => asArray(await request<PurchaseHistory[]>('/api/me/purchases')),
@@ -144,7 +153,6 @@ export const meApi = {
   // そのままReact側で .length や .map を呼ぶと画面全体が落ちるため、
   // ここで必ず items を配列へ正規化します。
   recommendations: async () => {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const data = await request<RecommendationResponse>('/api/me/recommendations');
     return {
       reason: data?.reason ?? '現在表示できるおすすめ商品はありません。',
@@ -153,14 +161,16 @@ export const meApi = {
   },
 };
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// checklistApi は商品詳細の「気になる」状態を読み書きする小さなAPI群です。
+// 一覧取得はmeApi.checklist、単一商品の状態確認と追加/削除はこちらに分けています。
 export const checklistApi = {
   status: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`),
   add: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'POST' }),
   remove: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'DELETE' }),
 };
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// messageApi は公開コメントと非公開DMを扱います。
+// parentMessageIdを送ると返信になり、receiverIdを送ると購入検討者と出品者のDM相手を明示できます。
 export const messageApi = {
   list: async (itemId: number) => asArray(await request<Message[]>(`/api/items/${itemId}/messages`)),
   send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
@@ -169,7 +179,8 @@ export const messageApi = {
   sendPrivate: (itemId: number, body: string, receiverId?: number, parentMessageId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId, parentMessageId }) }),
 };
 
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// aiApi は商品説明生成、カテゴリ知識、自然言語検索、AIチャットを束ねます。
+// 外部AI失敗時のnotice/usedFallbackはAITextResponseやAIChatMessageに残り、画面で利用者へ説明できます。
 export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),

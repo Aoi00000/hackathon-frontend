@@ -4,12 +4,12 @@
  * 役割:
  * 商品一覧、検索、保存検索、AI自然言語検索、MerRec風おすすめを表示するメイン画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 通常検索、自然言語検索、保存検索、推薦表示が同じItemSearchParamsへ集約される点がこの画面の中心です。
+ * AI検索は最終的に通常検索フォームへ反映するため、バックエンドのフィルタ処理と画面表示を二重実装しない構成になっています。
  */
 /**
  * 商品一覧ページ。
@@ -38,14 +38,12 @@ import { formatYen, firstImageUrl, statusLabel } from '../utils';
 
 // 商品一覧の販売状況フィルタで使う候補です。
 // DB上の値は available / sold ですが、画面では分かりやすいラベルで表示します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 const statuses: Array<{ value: ItemStatus; label: string }> = [
   { value: 'available', label: 'Available' },
   { value: 'sold', label: 'SOLD' },
 ];
 
 // 左サイドバーの複数選択フィルタを共通化するためのpropsです。
-// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 type OptionGroupProps = {
   title: string;
   values: string[];
@@ -55,16 +53,13 @@ type OptionGroupProps = {
 };
 
 // チェックボックス1つを押したとき、選択済みなら外し、未選択なら追加します。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function toggleValue(values: string[], value: string): string[] {
   return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
 }
 
 // Amazon風サイドバーの折りたたみフィルタです。
 // details/summaryを使うことで、少ない実装で開閉UIとキーボード操作を両立します。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function MultiFilter({ title, values, selected, onChange, translateLabel = (v) => v }: OptionGroupProps) {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const selectedLabel = selected.length > 0 ? `（${selected.length}件）` : '';
 
   return (
@@ -72,7 +67,6 @@ function MultiFilter({ title, values, selected, onChange, translateLabel = (v) =
       <summary>{translateLabel(title)}{selectedLabel}</summary>
       <div className="checkboxList">
         {values.filter(Boolean).map((value) => {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
           const displayValue = translateLabel(statuses.find((s) => s.value === value)?.label ?? value);
           return (
             <label key={value} className="checkboxOption">
@@ -87,104 +81,60 @@ function MultiFilter({ title, values, selected, onChange, translateLabel = (v) =
 }
 
 // APIの検索パラメータはカンマ区切り文字列で送るため、配列との相互変換をまとめます。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// join は、チェックボックスで複数選択されたカテゴリ・サイズ・色などをURLクエリ用の文字列へ変換します。
 function join(values: string[]): string { return values.join(','); }
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+
+// split は、保存検索やURLから戻ってきたカンマ区切り条件を、チェックボックス用の配列へ戻します。
+// 空文字は未選択として扱い、filter(Boolean)で余分な空要素を取り除きます。
 function split(value?: string): string[] { return value ? value.split(',').filter(Boolean) : []; }
 
 // Goのnil sliceがJSON nullになる場合でも、React側では常に配列として扱います。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function safeRecommendationItems(recommendation: RecommendationResponse | null): Item[] {
   return Array.isArray(recommendation?.items) ? recommendation.items : [];
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ItemListPage は、商品一覧、検索フォーム、自然言語検索、保存検索、MerRec風おすすめをまとめるトップ画面です。
+// AI検索も最終的には通常検索パラメータへ変換し、一覧APIを再利用することで検索ロジックの重複を避けています。
 export function ItemListPage() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user } = useAuth();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { lang, t } = useI18n();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [searchParams] = useSearchParams();
 
   // 通常検索フォームの状態です。保存検索条件や自然言語検索も最終的にはここへ反映します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [q, setQ] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [categories, setCategories] = useState<string[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [minPrice, setMinPrice] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [maxPrice, setMaxPrice] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [tag, setTag] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [deliveryWithin, setDeliveryWithin] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [sort, setSort] = useState('recommended');
 
   // 商品一覧、レコメンド、保存検索条件の状態です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [items, setItems] = useState<Item[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isRecommendationLoading, setIsRecommendationLoading] = useState(false);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [recommendationError, setRecommendationError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
 
   // 生成AIを活用した自然言語検索用の状態です。
   // AIが使えない場合もバックエンド側でローカル規則にフォールバックします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [naturalLanguageMessage, setNaturalLanguageMessage] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [naturalLanguageError, setNaturalLanguageError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isNaturalLanguageLoading, setIsNaturalLanguageLoading] = useState(false);
 
   // 画面全体の検索・エラー・保存メッセージ状態です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isSearched, setIsSearched] = useState(false);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isLoading, setIsLoading] = useState(false);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [saveName, setSaveName] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [message, setMessage] = useState('');
 
   // 現在の検索フォーム状態をAPIパラメータへ変換します。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function currentParams(): ItemSearchParams {
     return {
       q,
@@ -202,7 +152,6 @@ export function ItemListPage() {
   }
 
   // 保存検索条件・自然言語検索・リセットなどから、一括でフォーム状態を更新します。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function applyParams(params: ItemSearchParams) {
     setQ(params.q ?? '');
     setCategories(split(params.category));
@@ -242,14 +191,11 @@ export function ItemListPage() {
   }
 
   // 初回表示では「検索結果なし」の表示を出さず、通常の商品一覧だけ取得します。
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { loadItems(currentParams(), false); }, []);
   useEffect(() => { loadSavedSearches(); }, [user?.id]);
 
   // レコメンドは少し遅れても枠が常に見えるよう、ロード中表示を出します。
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
     async function loadRecommendations() {
       setRecommendationError('');
@@ -260,7 +206,6 @@ export function ItemListPage() {
       }
       setIsRecommendationLoading(true);
       try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
         const data = await meApi.recommendations();
         if (!cancelled) setRecommendation(data);
       } catch (e) {
@@ -277,12 +222,9 @@ export function ItemListPage() {
   }, [user?.id]);
 
   // 通知やマイページから保存済み検索条件ID付きで戻ってきた場合、その条件を反映します。
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const savedSearchID = searchParams.get('savedSearch');
     if (!savedSearchID || savedSearches.length === 0) return;
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const row = savedSearches.find((s) => String(s.id) === savedSearchID);
     if (row) applySavedSearch(row);
   }, [searchParams, savedSearches.length]);
@@ -293,9 +235,7 @@ export function ItemListPage() {
       setError('検索条件の保存にはログインが必要です');
       return;
     }
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const name = saveName.trim() || `検索条件 ${new Date().toLocaleString('ja-JP')}`;
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const queryJson = JSON.stringify(currentParams());
     try {
       setError('');
@@ -310,7 +250,6 @@ export function ItemListPage() {
 
   // 保存済み検索条件を商品一覧に反映します。
   async function applySavedSearch(search: SavedSearch) {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const params = parseSavedSearchQuery(search.queryJson);
     applyParams(params);
     await loadItems(params, true);
@@ -318,7 +257,6 @@ export function ItemListPage() {
   }
 
   // 通常の検索フォーム送信です。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function submitSearch(event: FormEvent) {
     event.preventDefault();
     loadItems(currentParams(), true);
@@ -328,7 +266,6 @@ export function ItemListPage() {
   // バックエンドが自然文を既存検索パラメータへ変換し、同じ商品一覧APIで絞り込みます。
   async function submitNaturalLanguageSearch(event: FormEvent) {
     event.preventDefault();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const query = naturalLanguageQuery.trim();
     if (!query) {
       setNaturalLanguageError('検索したい内容を入力してください');
@@ -338,9 +275,7 @@ export function ItemListPage() {
     setNaturalLanguageMessage('');
     setIsNaturalLanguageLoading(true);
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const parsed = await aiApi.parseSearch(query);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const params: ItemSearchParams = {
         q: parsed.q ?? '',
         category: parsed.category ?? '',
@@ -363,8 +298,6 @@ export function ItemListPage() {
       setIsNaturalLanguageLoading(false);
     }
   }
-
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const recommendationItems = safeRecommendationItems(recommendation);
 
   return (

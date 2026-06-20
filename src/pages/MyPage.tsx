@@ -4,12 +4,12 @@
  * 役割:
  * プロフィール、残高、支払い方法、月別売上/利用額グラフ、運営問い合わせを管理する画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 残高、売上、支払い方法、住所、保存検索、ブロック、問い合わせを集めた本人用ダッシュボードです。
+ * 支払い方法は下4桁だけを表示し、カード番号そのものをフロントに保持しない前提でUIを作っています。
  */
 /**
  * マイページ。
@@ -25,31 +25,31 @@ import { describeSavedSearch } from '../savedSearch';
 import type { BlockedUser, MonthlyMoneySummary, PaymentMethod, SavedSearch, SupportMessage, User } from '../types';
 import { formatCoins, formatDate, ratingStars, safeNumber } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ensureArray は、APIレスポンスがnullやundefinedだった場合でもReactで安全にmapできる配列へ正規化します。
+// Go側でnil sliceがJSON nullになるケースを画面の境界で吸収し、表示処理を単純に保ちます。
 function ensureArray<T>(value: T[] | null | undefined): T[] { return Array.isArray(value) ? value : []; }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// groupSupportMessages は、運営DMを話題(subject)ごとのスレッド表示にまとめます。
+// DB上はメッセージ行の配列でも、画面では同じ相談内容をまとまりとして読めた方が履歴を追いやすくなります。
 function groupSupportMessages(messages: SupportMessage[]): Array<{ subject: string; messages: SupportMessage[] }> {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const map = new Map<string, SupportMessage[]>();
   messages.forEach((message) => {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const subject = message.subject || '一般相談';
     map.set(subject, [...(map.get(subject) ?? []), message]);
   });
   return Array.from(map.entries()).map(([subject, rows]) => ({ subject, messages: rows }));
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// monthLabel は、YYYY-MM形式の月文字列をグラフ下の短い日本語表示へ変換します。
+// 例として "2026-06" を "6月" にし、月別収支グラフの横幅を節約します。
 function monthLabel(value: string): string {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [, month] = value.split('-');
   return month ? `${Number(month)}月` : value;
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// MonthlyMoneyChart は、月別の売上額と利用額を棒グラフとして表示します。
+// 外部チャートライブラリを使わずCSSの高さで表現し、取引がない月も0円として比較できるようにします。
 function MonthlyMoneyChart({ rows }: { rows: MonthlyMoneySummary[] }) {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const max = Math.max(1, ...rows.flatMap((row) => [row.salesYen, row.spendYen]));
   return (
     <div className="moneyChart" aria-label="月別売上額と利用額の棒グラフ">
@@ -70,67 +70,38 @@ function MonthlyMoneyChart({ rows }: { rows: MonthlyMoneySummary[] }) {
   );
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// MyPage は、本人情報、残高、支払い方法、保存検索、ブロック、運営DMを集約するダッシュボードです。
+// 複数APIの結果をまとめて読み込み、各セクションで完結した操作とメッセージ表示を行います。
 export function MyPage() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user } = useAuth();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const paymentRef = useRef<HTMLDivElement | null>(null);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [profile, setProfile] = useState<User | null>(user);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [chargeAmount, setChargeAmount] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shippingRegion, setShippingRegion] = useState(user?.shippingRegion ?? '');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shippingAddress, setShippingAddress] = useState(user?.shippingAddress ?? '');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [monthlySummary, setMonthlySummary] = useState<MonthlyMoneySummary[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [supportSubject, setSupportSubject] = useState('取引について');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [supportBody, setSupportBody] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [sectionMessages, setSectionMessages] = useState<Record<string, string>>({});
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [paymentForm, setPaymentForm] = useState({ label: '', cardNumber: '', holderName: '', expiryMonth: '', expiryYear: '', securityCode: '', isDefault: true });
-
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const savedSearchList = useMemo(() => ensureArray<SavedSearch>(savedSearches), [savedSearches]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const blockedUserList = useMemo(() => ensureArray<BlockedUser>(blockedUsers), [blockedUsers]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const supportThreads = useMemo(() => groupSupportMessages(ensureArray<SupportMessage>(supportMessages)), [supportMessages]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const hasDefaultPayment = paymentMethods.some((method) => method.isDefault);
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // showSectionMessage は、ページ全体のエラーとは別に、各セクションの成功メッセージを保存します。
+  // 支払い方法・住所・保存検索など操作箇所が多いため、どの操作が成功したかを近くに表示します。
   function showSectionMessage(section: string, text: string) { setSectionMessages((current) => ({ ...current, [section]: text })); }
 
+  // load は、マイページに必要な本人情報と関連一覧を並列で取得します。
+  // 失敗しても一部セクションだけ空配列にできるものはcatchし、プロフィール取得の失敗だけ全体エラーとして扱います。
   async function load() {
     setError('');
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const [me, ss, bs, support, monthly, payments] = await Promise.all([
         authApi.me(),
         meApi.savedSearches().catch((): SavedSearch[] => []),
@@ -149,15 +120,14 @@ export function MyPage() {
       setPaymentMethods(ensureArray<PaymentMethod>(payments));
     } catch (e) { setError(e instanceof Error ? e.message : 'マイページの取得に失敗しました'); }
   }
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // scrollToPayments は、支払い方法未登録時に登録フォームへ視線を移すための補助関数です。
+  // チャージボタンを押したユーザーが次に何をすべきか分かるよう、該当セクションまでスクロールします。
   function scrollToPayments() { paymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
+  // charge は、既定の支払い方法が登録済みであることを確認してから残高チャージAPIを呼びます。
+  // 成功後はプロフィールと月別集計を再取得し、残高・通知・グラフが最新状態になるようにします。
   async function charge() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const amount = Number(chargeAmount);
     if (!Number.isInteger(amount) || amount <= 0) { setError('チャージ金額を入力してください'); return; }
     if (!hasDefaultPayment) {
@@ -178,11 +148,11 @@ export function MyPage() {
     }
   }
 
+  // createPayment は、支払い方法フォームの値を数値化して登録APIへ送ります。
+  // 実運用ではカード番号を直接扱わず決済代行のトークンを使うべきですが、このデモでは下4桁表示用に簡易保存します。
   async function createPayment(event: FormEvent) {
     event.preventDefault();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const expiryMonth = Number(paymentForm.expiryMonth);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const expiryYear = Number(paymentForm.expiryYear);
     try {
       setError('');

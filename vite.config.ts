@@ -4,14 +4,14 @@
  * 役割:
  * React + Vite の開発サーバーとビルド設定を定義します。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
  * コメント方針:
  * 実装の動作は変えず、状態管理、API通信、画面遷移、デモで見せるべき意図を日本語で補足しています。
+ */
+
+/**
+ * 実装詳細メモ:
+ * React用Viteプラグインと開発サーバー設定です。
+ * フロントエンド単体で起動してもバックエンドAPIへ接続できるよう、環境変数側のAPI URLと合わせて管理します。
  */
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';

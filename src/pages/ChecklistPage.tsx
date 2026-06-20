@@ -4,12 +4,12 @@
  * 役割:
  * チェックリスト商品を販売中/売却済みに分けて検索・閲覧できる画面です。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 気になる商品を保存するチェックリスト画面です。
+ * 一覧から削除したときにローカルstateも即時更新し、API完了後の再取得を待たずに操作結果が分かるようにしています。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,11 +19,11 @@ import { fuzzyIncludes, itemSearchText } from '../searchUtils';
 import type { Item } from '../types';
 import { firstImageUrl, formatDate, formatYen, isVideoUrl, statusLabel } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ChecklistItemCard は、チェックリスト内の商品を1件表示するためのカードです。
+// 商品詳細へのリンクとチェックリスト削除操作を同じカードにまとめ、一覧からすぐ購入検討を再開できるようにします。
 function ChecklistItemCard({ item, onRemove }: { item: Item; onRemove: (id: number) => Promise<void> }) {
   // チェックリストのカードは、商品詳細へ遷移しやすい概要表示に絞ります。
   // 詳しいコメント・DM・価格交渉・購入導線は商品詳細ページに集約します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const representativeMedia = firstImageUrl(item.imageUrl);
   return (
     <article className="card historyCard compactHistoryCard">
@@ -49,17 +49,15 @@ function ChecklistItemCard({ item, onRemove }: { item: Item; onRemove: (id: numb
   );
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// ChecklistPage は、ログインユーザーが保存した「気になる商品」を管理する画面です。
+// AvailableとSOLDを分けることで、今買える商品と売り切れた商品を同じ検索語で見比べられます。
 export function ChecklistPage() {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [items, setItems] = useState<Item[]>([]);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [query, setQuery] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
 
+  // load は、本人のチェックリスト商品をAPIから取得してstateへ反映します。
+  // meApi.checklist側でnullを配列に正規化しているため、画面では常にmap/filterできる配列として扱えます。
   async function load() {
     setError('');
     try {
@@ -68,25 +66,19 @@ export function ChecklistPage() {
       setError(e instanceof Error ? e.message : 'チェックリストの取得に失敗しました');
     }
   }
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
   // 検索はAvailable/SOLDの両方を対象に行い、その後で左右の列に分けます。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const filtered = useMemo(() => items.filter((item) => fuzzyIncludes(itemSearchText(item), query)), [items, query]);
 
   // Available商品は、古い更新ほど上に置き、価格変更や販売停滞に気づきやすくします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()), [filtered]);
 
   // SOLD商品は、売れた直近商品を見返しやすくするため、新しい更新ほど上に置きます。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [filtered]);
 
+  // remove は、指定商品をチェックリストから外し、完了後に一覧を再取得します。
+  // サーバー側の状態を再読込することで、チェックリスト数や商品ステータスの最新値も一緒に反映されます。
   async function remove(id: number) {
     setError('');
     try {

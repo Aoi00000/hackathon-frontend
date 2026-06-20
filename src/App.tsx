@@ -4,12 +4,12 @@
  * 役割:
  * React Routerによる画面遷移、ヘッダー、未読通知バッジ、認証必須ページの制御を担当します。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * ヘッダー、ナビゲーション、ルーティング、通知バッジをまとめるアプリの外枠です。
+ * ログイン状態に応じて表示する導線を変え、未ログインでも商品閲覧とAI検索を試せる構成にしています。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -30,39 +30,29 @@ import { PurchaseFlowPage } from './pages/PurchaseFlowPage';
 import { PurchaseHistoryPage } from './pages/PurchaseHistoryPage';
 import { RegisterPage } from './pages/RegisterPage';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// App は、フリマアプリ全体の外枠になるルートコンポーネントです。
+// ヘッダー、ログイン状態に応じたナビゲーション、未読通知数、React Routerの画面対応表をここでまとめます。
 export function App() {
   // ログイン中ユーザーとログアウト処理を認証コンテキストから取得します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user, logout, isLoading } = useAuth();
   // 画面遷移用の関数です。ログアウト後や通知遷移で利用します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const navigate = useNavigate();
   // 現在URLです。画面遷移時に通知数を再取得するため依存配列に入れます。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const location = useLocation();
   // ヘッダーのベルに表示する未読通知数です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [notificationCount, setNotificationCount] = useState(0);
 
   // user が存在すればログイン済みとして扱います。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const isLoggedIn = useMemo(() => Boolean(user), [user]);
 
   // ログアウト時は、現在ページに残さず商品一覧トップへ戻します。
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function logoutAndGoHome() {
     logout();
     navigate('/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
     // アンマウント後に setState しないためのフラグです。
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
 
     // 未読通知数だけを軽く取得して、ヘッダーのバッジへ反映します。
@@ -71,14 +61,12 @@ export function App() {
         setNotificationCount(0);
         return;
       }
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const list = await meApi.notifications().catch(() => []);
       if (!cancelled) setNotificationCount(list.filter((n) => !n.readAt).length);
     }
 
     loadNotificationCount();
     window.addEventListener('notifications:changed', loadNotificationCount);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const timer = window.setInterval(loadNotificationCount, 30000);
 
     return () => {

@@ -4,12 +4,12 @@
  * 役割:
  * 商品出品と商品編集を兼ね、AI説明生成、画像・動画並び替え、必須入力検証を行います。
  *
- * 読み方の目安:
- * 1. importで依存しているAPI、型、ユーティリティを確認します。
- * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
- * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
- * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
- *
+ */
+
+/**
+ * 実装詳細メモ:
+ * 出品フォームでは商品説明生成AI、画像圧縮、複数画像の並び替え、配送条件入力をまとめて扱います。
+ * 画像はData URLとしてAPIへ送るため、アップロード前にブラウザ側で圧縮しDBサイズと通信量を抑えます。
  */
 /**
  * 商品出品ページ。
@@ -28,13 +28,15 @@ import { categories, colors, conditions, deliveryMethods, sizes } from '../formO
 import { fileToMediaDataUrl } from '../imageUpload';
 import { stringifyImageUrls } from '../utils';
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// RequiredMark は、フォーム上の必須項目を示す共通マークです。
+// ラベルごとに同じspanを直接書く代わりにコンポーネント化し、見た目やclass名を一箇所で管理します。
 function RequiredMark() {
   // 必須項目であることを視覚的に示す小さな赤いマークです。
   return <span className="requiredMark">*</span>;
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// LabelText は、入力項目名、必須マーク、入力例をまとめて表示する小さなラベル部品です。
+// 出品フォームは項目数が多いため、ラベル表現を揃えることで初心者にも入力意図が伝わりやすくなります。
 function LabelText({ children, example, required }: { children: string; example?: string; required?: boolean }) {
   // ラベル名、必須マーク、入力例を一箇所で整形します。
   return (
@@ -45,89 +47,48 @@ function LabelText({ children, example, required }: { children: string; example?
   );
 }
 
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+// CreateItemPage は、新規出品フォームを表示し、画像・動画アップロードとAI説明生成をまとめて扱います。
+// 画面内のstateはそのままCreateItemRequestへ変換され、出品後はマイページの出品履歴へ遷移します。
 export function CreateItemPage() {
   // 出品完了後に出品履歴へ移動するための navigate です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const navigate = useNavigate();
 
   // ログインユーザーのマイページ登録情報を、出品フォームの初期値に反映するために使います。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user } = useAuth();
 
   // 以下は出品フォームの各入力値です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [title, setTitle] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [category, setCategory] = useState('本・教材');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [conditionText, setConditionText] = useState('目立った傷や汚れなし');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [priceInput, setPriceInput] = useState('');
 
   // 複数画像を扱うため、画像は配列で管理します。
   // バックエンドには既存互換のため imageUrl という1つの文字列として送りますが、
   // 2枚以上の場合は JSON.stringify([...]) した文字列として保存します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [deliveryMethod, setDeliveryMethod] = useState('対面・配送相談');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shippingDays, setShippingDays] = useState('2');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shipFromRegion, setShipFromRegion] = useState('東京都');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [size, setSize] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [color, setColor] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [tags, setTags] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [keywords, setKeywords] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [description, setDescription] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [aiNotice, setAiNotice] = useState('');
 
   // 画像変換やAI説明生成のローディング状態です。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isGenerating, setIsGenerating] = useState(false);
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isImageConverting, setIsImageConverting] = useState(false);
 
   // file input は value を直接空にしにくいので、keyを変えて再マウントします。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [imageInputKey, setImageInputKey] = useState(0);
 
   // 画面表示用のエラーと、カテゴリ別のC2C取引チェックポイントです。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
-  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [categoryTips, setCategoryTips] = useState<string[]>([]);
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
     // マイページで発送元地域を登録済みの場合、出品フォームの初期値に反映します。
     // ただし、ユーザーがすでに手入力した値を上書きしないよう、空欄または初期値の東京都のときだけ更新します。
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
     authApi.me()
       .then((me) => {
@@ -139,50 +100,38 @@ export function CreateItemPage() {
       });
     return () => { cancelled = true; };
   }, [user?.id]);
-
-  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
     // カテゴリが変わるたびに、そのカテゴリで購入者が気にしやすい点を取得します。
     // これは商品説明やAIに伝えるメモの記入補助として使うため、メモ欄の近くに表示します。
-// 【詳細コメント】このlet宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     let cancelled = false;
     aiApi.categoryKnowledge(category)
       .then((res) => { if (!cancelled) setCategoryTips(res.tips); })
       .catch(() => { if (!cancelled) setCategoryTips([]); });
     return () => { cancelled = true; };
   }, [category]);
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function clearErrorOnEdit() {
     // 入力修正後も過去の警告が残り続けると混乱するため、編集時に消します。
     if (error) setError('');
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function onPriceChange(value: string) {
     // 価格欄には数字だけを残します。
     clearErrorOnEdit();
     setPriceInput(value.replace(/\D/g, ''));
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function priceToNumber(): number | null {
     // 空欄や0円以下を不正値として弾くため、送信前に数値へ変換します。
     if (priceInput.trim() === '') return null;
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const n = Number(priceInput);
     return Number.isInteger(n) && n > 0 ? n : null;
   }
 
   async function onImageFileChange(event: ChangeEvent<HTMLInputElement>) {
     // 選択された複数画像を順番にData URLへ圧縮変換し、プレビュー一覧へ追加します。
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
     setError('');
     setIsImageConverting(true);
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const converted = await Promise.all(files.map((file) => fileToMediaDataUrl(file)));
       setImageUrls((current) => [...current, ...converted]);
     } catch (e) {
@@ -192,8 +141,6 @@ export function CreateItemPage() {
       setImageInputKey((current) => current + 1);
     }
   }
-
-// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function removeImage(index: number) {
     // 誤って選択した画像だけを削除します。
     setImageUrls((current) => current.filter((_, i) => i !== index));
@@ -205,7 +152,6 @@ export function CreateItemPage() {
     setError('');
     setIsGenerating(true);
     try {
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const result = await aiApi.generateDescription({ title, category, conditionText, keywords });
       setDescription(result.text);
       setAiNotice(result.notice ?? '');
@@ -220,9 +166,7 @@ export function CreateItemPage() {
     // フォーム送信時に入力値を検証し、バックエンドへ出品リクエストを送ります。
     event.preventDefault();
     setError('');
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const priceYen = priceToNumber();
-// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const days = Number(shippingDays);
     if (priceYen === null) { setError('価格(円)を1円以上の整数で入力してください'); return; }
     if (!Number.isInteger(days) || days <= 0) { setError('発送までの日数を1日以上の整数で入力してください'); return; }
