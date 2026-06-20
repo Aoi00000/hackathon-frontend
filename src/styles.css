@@ -1807,6 +1807,19 @@ textarea {
   font-weight: 1000;
 }
 
+.historySortControl {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.historySortControl select {
+  width: auto;
+  min-width: 7rem;
+}
+
 .historyColumnList { display: grid; gap: 14px; }
 .emptyColumnText { padding: 18px; border: 1px dashed #cbd5e1; border-radius: 16px; background: rgba(255,255,255,.72); }
 .compactHistoryCard { padding: 18px; }

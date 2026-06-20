@@ -269,6 +269,8 @@ export function MyItemsPage() {
   // 出品履歴一覧です。
   const [items, setItems] = useState<Item[]>([]);
   const [query, setQuery] = useState('');
+  const [availableSort, setAvailableSort] = useState<'oldest' | 'newest'>('oldest');
+  const [soldSort, setSoldSort] = useState<'oldest' | 'newest'>('newest');
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
 
@@ -286,11 +288,17 @@ export function MyItemsPage() {
   // 検索後に左右2列へ分けることで、検索対象としては全商品を保ちながら、表示は取引状態ごとに整理します。
   const filtered = useMemo(() => items.filter((item) => fuzzyIncludes(itemSearchText(item), query)), [items, query]);
 
-  // Available列は、売れ残り期間が長いものを上に出すため、更新時刻が古い順に並べます。
-  const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()), [filtered]);
+  // 初期表示は従来どおり古い順としつつ、新しい順へ切り替えられるようにします。
+  const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => {
+    const difference = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    return availableSort === 'oldest' ? difference : -difference;
+  }), [availableSort, filtered]);
 
-  // SOLD列は、直近の取引確認をしやすくするため、更新時刻が新しい順に並べます。
-  const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [filtered]);
+  // 初期表示は従来どおり新しい順とし、古い順へも切り替えられるようにします。
+  const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => {
+    const difference = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    return soldSort === 'oldest' ? difference : -difference;
+  }), [filtered, soldSort]);
 
   return (
     <section className="stack fullWidthPage historySplitPage">
@@ -302,12 +310,14 @@ export function MyItemsPage() {
         <div className="historyTwoColumnLayout">
           <section className="historyColumn availableColumn">
             <div className="historyColumnHeader"><h2>Available</h2><span>{availableItems.length}件</span></div>
-            <p className="muted compactHint">更新時刻が古い順に表示します。長く売れ残っている商品を上から確認できます。</p>
+            <label className="historySortControl">並び順<select value={availableSort} onChange={(e) => setAvailableSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">商品の更新時刻を基準に並べます。</p>
             <div className="historyColumnList">{availableItems.map((item) => <EditableItemCard key={item.id} item={item} onChanged={load} />)}{availableItems.length === 0 && <p className="muted emptyColumnText">該当するAvailable商品はありません。</p>}</div>
           </section>
           <section className="historyColumn soldColumn">
             <div className="historyColumnHeader"><h2>SOLD</h2><span>{soldItems.length}件</span></div>
-            <p className="muted compactHint">更新時刻が新しい順に表示します。最近の取引状況をすぐ確認できます。</p>
+            <label className="historySortControl">並び順<select value={soldSort} onChange={(e) => setSoldSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">商品の更新時刻を基準に並べます。</p>
             <div className="historyColumnList">{soldItems.map((item) => <EditableItemCard key={item.id} item={item} onChanged={load} />)}{soldItems.length === 0 && <p className="muted emptyColumnText">該当するSOLD商品はありません。</p>}</div>
           </section>
         </div>

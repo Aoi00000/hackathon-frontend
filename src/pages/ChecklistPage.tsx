@@ -54,6 +54,8 @@ function ChecklistItemCard({ item, onRemove }: { item: Item; onRemove: (id: numb
 export function ChecklistPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [query, setQuery] = useState('');
+  const [availableSort, setAvailableSort] = useState<'oldest' | 'newest'>('oldest');
+  const [soldSort, setSoldSort] = useState<'oldest' | 'newest'>('newest');
   const [error, setError] = useState('');
 
   // load は、本人のチェックリスト商品をAPIから取得してstateへ反映します。
@@ -71,11 +73,17 @@ export function ChecklistPage() {
   // 検索はAvailable/SOLDの両方を対象に行い、その後で左右の列に分けます。
   const filtered = useMemo(() => items.filter((item) => fuzzyIncludes(itemSearchText(item), query)), [items, query]);
 
-  // Available商品は、古い更新ほど上に置き、価格変更や販売停滞に気づきやすくします。
-  const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()), [filtered]);
+  // Available商品は従来どおり古い順を初期値にし、更新日時を基準に切り替えます。
+  const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => {
+    const difference = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    return availableSort === 'oldest' ? difference : -difference;
+  }), [availableSort, filtered]);
 
-  // SOLD商品は、売れた直近商品を見返しやすくするため、新しい更新ほど上に置きます。
-  const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [filtered]);
+  // SOLD商品は従来どおり新しい順を初期値にし、更新日時を基準に切り替えます。
+  const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => {
+    const difference = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    return soldSort === 'oldest' ? difference : -difference;
+  }), [filtered, soldSort]);
 
   // remove は、指定商品をチェックリストから外し、完了後に一覧を再取得します。
   // サーバー側の状態を再読込することで、チェックリスト数や商品ステータスの最新値も一緒に反映されます。
@@ -99,12 +107,14 @@ export function ChecklistPage() {
         <div className="historyTwoColumnLayout">
           <section className="historyColumn availableColumn">
             <div className="historyColumnHeader"><h2>Available</h2><span>{availableItems.length}件</span></div>
-            <p className="muted compactHint">購入可能な商品を、更新時刻が古い順に表示します。</p>
+            <label className="historySortControl">並び順<select value={availableSort} onChange={(e) => setAvailableSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">商品の更新時刻を基準に並べます。</p>
             <div className="historyColumnList">{availableItems.map((item) => <ChecklistItemCard key={item.id} item={item} onRemove={remove} />)}{availableItems.length === 0 && <p className="muted emptyColumnText">該当するAvailable商品はありません。</p>}</div>
           </section>
           <section className="historyColumn soldColumn">
             <div className="historyColumnHeader"><h2>SOLD</h2><span>{soldItems.length}件</span></div>
-            <p className="muted compactHint">売り切れた商品を、更新時刻が新しい順に表示します。</p>
+            <label className="historySortControl">並び順<select value={soldSort} onChange={(e) => setSoldSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">商品の更新時刻を基準に並べます。</p>
             <div className="historyColumnList">{soldItems.map((item) => <ChecklistItemCard key={item.id} item={item} onRemove={remove} />)}{soldItems.length === 0 && <p className="muted emptyColumnText">該当するSOLD商品はありません。</p>}</div>
           </section>
         </div>

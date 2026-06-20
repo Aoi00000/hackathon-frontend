@@ -90,11 +90,13 @@ function PurchaseHistoryCard({ row, onComplete }: { row: PurchaseHistory; onComp
 }
 
 // PurchaseHistoryPage は、購入者視点の取引履歴を「取引中」と「取引完了」に分けて表示します。
-// 発送待ちや受け取り評価待ちの取引を優先的に見つけられるよう、未完了取引を古い順に並べます。
+// 各列の初期順序は従来どおり維持し、古い順と新しい順を利用者が切り替えられるようにします。
 export function PurchaseHistoryPage() {
   const [history, setHistory] = useState<PurchaseHistory[]>([]);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [ongoingSort, setOngoingSort] = useState<'oldest' | 'newest'>('oldest');
+  const [completedSort, setCompletedSort] = useState<'oldest' | 'newest'>('newest');
   const [searchParams] = useSearchParams();
 
   // load は、本人の購入履歴をAPIから取得してstateへ入れます。
@@ -113,11 +115,17 @@ export function PurchaseHistoryPage() {
   // まず検索で全体を絞り込み、その後に未完了/完了へ分けることで、どちらの列の商品も検索できます。
   const filtered = useMemo(() => history.filter((row) => fuzzyIncludes(purchaseSearchText(row), query)), [history, query]);
 
-  // 未完了取引は、古いものから上に出すことで、対応が遅れている取引に気づきやすくします。
-  const ongoing = useMemo(() => filtered.filter((row) => row.purchaseStatus !== 'completed').sort((a, b) => new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime()), [filtered]);
+  // 未完了取引は従来どおり古い順を初期値にし、購入日時を基準に切り替えます。
+  const ongoing = useMemo(() => filtered.filter((row) => row.purchaseStatus !== 'completed').sort((a, b) => {
+    const difference = new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime();
+    return ongoingSort === 'oldest' ? difference : -difference;
+  }), [filtered, ongoingSort]);
 
-  // 完了済み取引は、新しいものから上に出すことで、最近の購入履歴を見返しやすくします。
-  const completed = useMemo(() => filtered.filter((row) => row.purchaseStatus === 'completed').sort((a, b) => new Date(b.completedAt ?? b.purchasedAt).getTime() - new Date(a.completedAt ?? a.purchasedAt).getTime()), [filtered]);
+  // 完了済み取引は従来どおり新しい順を初期値にし、完了日時を基準に切り替えます。
+  const completed = useMemo(() => filtered.filter((row) => row.purchaseStatus === 'completed').sort((a, b) => {
+    const difference = new Date(a.completedAt ?? a.purchasedAt).getTime() - new Date(b.completedAt ?? b.purchasedAt).getTime();
+    return completedSort === 'oldest' ? difference : -difference;
+  }), [completedSort, filtered]);
 
   // complete は、購入者の受け取り評価をバックエンドへ送る処理です。
   // 完了すると出品者の評価平均・取引数・売上残高が更新されるため、送信後に履歴を再取得します。
@@ -141,12 +149,14 @@ export function PurchaseHistoryPage() {
         <div className="historyTwoColumnLayout">
           <section className="historyColumn ongoingColumn">
             <div className="historyColumnHeader"><h2>取引中</h2><span>{ongoing.length}件</span></div>
-            <p className="muted compactHint">受け取り評価がまだ完了していない商品を、古い順に表示します。</p>
+            <label className="historySortControl">並び順<select value={ongoingSort} onChange={(e) => setOngoingSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">購入日時を基準に並べます。</p>
             <div className="historyColumnList">{ongoing.map((row) => <PurchaseHistoryCard key={row.purchaseId} row={row} onComplete={complete} />)}{ongoing.length === 0 && <p className="muted emptyColumnText">未完了の取引はありません。</p>}</div>
           </section>
           <section className="historyColumn completedColumn">
             <div className="historyColumnHeader"><h2>取引完了</h2><span>{completed.length}件</span></div>
-            <p className="muted compactHint">受け取り評価まで終わった商品を、新しい順に表示します。</p>
+            <label className="historySortControl">並び順<select value={completedSort} onChange={(e) => setCompletedSort(e.target.value as 'oldest' | 'newest')}><option value="oldest">古い順</option><option value="newest">新しい順</option></select></label>
+            <p className="muted compactHint">取引完了日時を基準に並べます。</p>
             <div className="historyColumnList">{completed.map((row) => <PurchaseHistoryCard key={row.purchaseId} row={row} onComplete={complete} />)}{completed.length === 0 && <p className="muted emptyColumnText">完了済みの取引はありません。</p>}</div>
           </section>
         </div>
