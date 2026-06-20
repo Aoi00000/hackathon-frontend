@@ -1,4 +1,17 @@
 /**
+ * ファイル概要: hackathon-frontend/src/api/client.ts
+ *
+ * 役割:
+ * フロントエンドからバックエンドAPIへアクセスする関数を集約し、認証ヘッダーやエラー処理を共通化します。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
+/**
  * フロントエンドのAPIクライアント。
  *
  * 画面ごとにfetchを書くと、認証ヘッダー、JSON変換、エラー処理、null配列対策が重複します。
@@ -9,9 +22,12 @@
  */
 import type { AIChatMessage, AIChatThread, AIChatTurnResponse, AITextResponse, AuthResponse, BlockedUser, CategoryKnowledge, ChecklistStatus, Item, ItemAIAnalysis, Message, NaturalSearchResponse, Notification, PrivateMessage, PurchaseHistory, RecommendationResponse, SavedSearch, SupportMessage, User, MonthlyMoneySummary, PaymentMethod } from '../types';
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 const tokenKey = 'hackathon_token';
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -25,18 +41,26 @@ if (localStorage.getItem(tokenKey)) {
   localStorage.removeItem(tokenKey);
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function setToken(token: string): void { sessionStorage.setItem(tokenKey, token); }
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function getToken(): string | null { return sessionStorage.getItem(tokenKey); }
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function clearToken(): void { sessionStorage.removeItem(tokenKey); localStorage.removeItem(tokenKey); }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const url = `${API_BASE_URL}${path}`;
   try {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const response = await fetch(url, { ...options, headers });
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const data = await response.json().catch(() => null);
     if (!response.ok) throw new Error(data?.error ?? `API error: ${response.status}`);
     return data as T;
@@ -46,6 +70,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 }
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const authApi = {
   register: (payload: { name: string; email: string; password: string }) => request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload: { email: string; password: string }) => request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
@@ -54,6 +79,7 @@ export const authApi = {
   charge: (amount: number) => request<User>('/api/me/charge', { method: 'POST', body: JSON.stringify({ amount }) }),
 };
 
+// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export type ItemSearchParams = {
   q?: string;
   category?: string;
@@ -67,13 +93,17 @@ export type ItemSearchParams = {
   deliveryWithin?: string;
   sort?: string;
 };
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function toQuery(params: ItemSearchParams): string {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => { if (v) sp.set(k, v); });
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const query = sp.toString();
   return query ? `?${query}` : '';
 }
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const itemApi = {
   list: async (params: ItemSearchParams) => asArray(await request<Item[]>(`/api/items${toQuery(params)}`)),
   get: (id: number) => request<Item>(`/api/items/${id}`),
@@ -90,6 +120,7 @@ export const itemApi = {
   analysis: (id: number) => request<ItemAIAnalysis>(`/api/items/${id}/analysis`),
 };
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const meApi = {
   items: async () => asArray(await request<Item[]>('/api/me/items')),
   purchases: async () => asArray(await request<PurchaseHistory[]>('/api/me/purchases')),
@@ -113,6 +144,7 @@ export const meApi = {
   // そのままReact側で .length や .map を呼ぶと画面全体が落ちるため、
   // ここで必ず items を配列へ正規化します。
   recommendations: async () => {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const data = await request<RecommendationResponse>('/api/me/recommendations');
     return {
       reason: data?.reason ?? '現在表示できるおすすめ商品はありません。',
@@ -121,12 +153,14 @@ export const meApi = {
   },
 };
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const checklistApi = {
   status: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`),
   add: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'POST' }),
   remove: (itemId: number) => request<ChecklistStatus>(`/api/items/${itemId}/checklist`, { method: 'DELETE' }),
 };
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const messageApi = {
   list: async (itemId: number) => asArray(await request<Message[]>(`/api/items/${itemId}/messages`)),
   send: (itemId: number, body: string, parentMessageId?: number) => request<Message>(`/api/items/${itemId}/messages`, { method: 'POST', body: JSON.stringify({ body, parentMessageId }) }),
@@ -135,6 +169,7 @@ export const messageApi = {
   sendPrivate: (itemId: number, body: string, receiverId?: number, parentMessageId?: number) => request<PrivateMessage>(`/api/items/${itemId}/private-messages`, { method: 'POST', body: JSON.stringify({ body, receiverId, parentMessageId }) }),
 };
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const aiApi = {
   generateDescription: (payload: { title: string; category: string; conditionText: string; keywords: string }) => request<AITextResponse>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify(payload) }),
   categoryKnowledge: (category: string) => request<CategoryKnowledge>(`/api/ai/category-knowledge?category=${encodeURIComponent(category)}`),

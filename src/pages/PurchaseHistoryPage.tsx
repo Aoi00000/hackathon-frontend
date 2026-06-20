@@ -1,3 +1,16 @@
+/**
+ * ファイル概要: hackathon-frontend/src/pages/PurchaseHistoryPage.tsx
+ *
+ * 役割:
+ * 購入履歴を取引中/完了済みに分け、発送確認や受け取り評価へ進める画面です。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -6,17 +19,25 @@ import { fuzzyIncludes, itemSearchText } from '../searchUtils';
 import type { PurchaseHistory } from '../types';
 import { firstImageUrl, formatDate, formatYen, isVideoUrl, nextPurchaseStep, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function purchaseSearchText(row: PurchaseHistory): string {
   // 購入履歴検索では、商品情報に加えて出品者名も検索対象にします。
   // itemSearchText は Item 風のオブジェクトを受け取るため、PurchaseHistoryにsellerNameを補って渡します。
   return itemSearchText({ ...row, sellerName: row.sellerName });
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function PurchaseHistoryCard({ row, onComplete }: { row: PurchaseHistory; onComplete: (event: FormEvent, row: PurchaseHistory) => Promise<void> }) {
   // カード内で評価入力を持つため、各商品ごとに独立したstateを用意します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [rating, setRating] = useState('5');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [comment, setComment] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const next = nextPurchaseStep(row.purchaseStatus);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const representativeMedia = firstImageUrl(row.imageUrl);
 
   return (
@@ -72,10 +93,17 @@ function PurchaseHistoryCard({ row, onComplete }: { row: PurchaseHistory; onComp
   );
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function PurchaseHistoryPage() {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [history, setHistory] = useState<PurchaseHistory[]>([]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [query, setQuery] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [searchParams] = useSearchParams();
 
   async function load() {
@@ -87,16 +115,23 @@ export function PurchaseHistoryPage() {
     }
   }
 
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
   // 検索対象は左右の列で共通です。
   // まず検索で全体を絞り込み、その後に未完了/完了へ分けることで、どちらの列の商品も検索できます。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const filtered = useMemo(() => history.filter((row) => fuzzyIncludes(purchaseSearchText(row), query)), [history, query]);
 
   // 未完了取引は、古いものから上に出すことで、対応が遅れている取引に気づきやすくします。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const ongoing = useMemo(() => filtered.filter((row) => row.purchaseStatus !== 'completed').sort((a, b) => new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime()), [filtered]);
 
   // 完了済み取引は、新しいものから上に出すことで、最近の購入履歴を見返しやすくします。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const completed = useMemo(() => filtered.filter((row) => row.purchaseStatus === 'completed').sort((a, b) => new Date(b.completedAt ?? b.purchasedAt).getTime() - new Date(a.completedAt ?? a.purchasedAt).getTime()), [filtered]);
 
   async function complete(event: FormEvent, row: PurchaseHistory) {

@@ -1,3 +1,16 @@
+/**
+ * ファイル概要: hackathon-frontend/src/pages/NotificationsPage.tsx
+ *
+ * 役割:
+ * 購入・出品・支払い方法・AI販売改善提案などの通知を確認し、既読化できる画面です。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -5,6 +18,7 @@ import { meApi } from '../api/client';
 import type { Notification } from '../types';
 import { formatDate } from '../utils';
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function targetPath(n: Notification): string {
   if (n.title.includes('出品完了')) return '/my/items';
   if (n.title.includes('出品キャンセル完了')) return '/my/items';
@@ -17,7 +31,9 @@ function targetPath(n: Notification): string {
   return n.itemId ? `/items/${n.itemId}` : '/my';
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function targetLabel(n: Notification): string {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const path = targetPath(n);
   if (path === '/my/purchases') return '購入履歴を見る';
   if (path === '/my/items') return '出品履歴を見る';
@@ -25,9 +41,14 @@ function targetLabel(n: Notification): string {
   return 'マイページを見る';
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function NotificationsPage() {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const navigate = useNavigate();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [notifications, setNotifications] = useState<Notification[]>([]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
 
   async function load() {
@@ -36,10 +57,12 @@ export function NotificationsPage() {
     catch (e) { setError(e instanceof Error ? e.message : '通知一覧の取得に失敗しました'); }
   }
 
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
   async function markRead(id: number) {
     try {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const updated = await meApi.readNotification(id);
       setNotifications((current) => current.map((n) => (n.id === id ? updated : n)));
       window.dispatchEvent(new Event('notifications:changed'));

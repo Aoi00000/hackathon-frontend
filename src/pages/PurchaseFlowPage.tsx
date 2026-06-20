@@ -1,3 +1,16 @@
+/**
+ * ファイル概要: hackathon-frontend/src/pages/PurchaseFlowPage.tsx
+ *
+ * 役割:
+ * 購入確定前に配送先、残高、AIチェック結果を確認し、購入処理を実行する画面です。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -6,22 +19,39 @@ import { useAuth } from '../context/AuthContext';
 import type { Item } from '../types';
 import { formatCoins, formatYen, firstImageUrl } from '../utils';
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function PurchaseFlowPage() {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { id } = useParams();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const itemId = Number(id);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user } = useAuth();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const navigate = useNavigate();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [item, setItem] = useState<Item | null>(null);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [latestUser, setLatestUser] = useState(user);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [deliveryAddress, setDeliveryAddress] = useState(user?.shippingAddress ?? '');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [chargeInput, setChargeInput] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [message, setMessage] = useState('');
 
   async function load() {
     // 商品情報と最新のユーザー情報を取得します。
     // AuthContextのuserは画面遷移直後に古い場合があるため、購入手続きでは /api/me を取り直します。
     setItem(await itemApi.get(itemId));
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const me = await authApi.me().catch(() => user);
     setLatestUser(me);
 
@@ -31,9 +61,11 @@ export function PurchaseFlowPage() {
       setDeliveryAddress((current) => (current.trim() === '' ? me.shippingAddress : current));
     }
   }
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, [itemId]);
 
   async function charge() {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const amount = Number(chargeInput);
     if (!Number.isInteger(amount) || amount <= 0) { setError('チャージ金額を入力してください'); return; }
     try { setLatestUser(await authApi.charge(amount)); setChargeInput(''); setError(''); setMessage(`${formatCoins(amount)}をチャージしました。`); } catch (e) { setError(e instanceof Error ? e.message : 'チャージに失敗しました'); }
@@ -46,6 +78,7 @@ export function PurchaseFlowPage() {
   }
 
   if (!item || !latestUser) return <p>読み込み中...</p>;
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const insufficient = latestUser.balanceCoins < item.priceYen;
 
   return <section className="stack">

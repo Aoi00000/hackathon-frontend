@@ -1,6 +1,20 @@
+/**
+ * ファイル概要: hackathon-frontend/src/formOptions.ts
+ *
+ * 役割:
+ * 出品フォームや検索フォームで使うカテゴリ、状態、地域、受け渡し方法などの選択肢を一元管理します。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
 // 出品・検索・編集画面で共通利用する選択肢をまとめるファイルです。
 // 同じ候補を複数ページに直接書くと修正漏れが起きやすいため、ここに集約します。
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const categories = [
   'ファッション',
   '本・教材',
@@ -18,8 +32,10 @@ export const categories = [
   'その他',
 ];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const searchableCategories = ['', ...categories];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const conditions = [
   '新品・未使用',
   '未使用に近い',
@@ -29,8 +45,10 @@ export const conditions = [
   '全体的に状態が悪い',
 ];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const searchableConditions = ['', ...conditions];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const sizes = [
   '',
   'XS',
@@ -52,6 +70,7 @@ export const sizes = [
   'その他',
 ];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const colors = [
   '',
   '黒',
@@ -73,6 +92,7 @@ export const colors = [
   'その他',
 ];
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const deliveryMethods = [
   '配送のみ',
   '対面受け渡し',
@@ -85,6 +105,7 @@ export const deliveryMethods = [
 
 // 商品一覧検索用の「発送までの日数」候補です。
 // 実装上は発送までの日数 shippingDays を目安として使います。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export const deliveryWithinOptions = [
   { value: '', label: '指定なし' },
   { value: 'today', label: '本日中' },

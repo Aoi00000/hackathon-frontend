@@ -1,3 +1,16 @@
+/**
+ * ファイル概要: hackathon-frontend/src/pages/MyItemsPage.tsx
+ *
+ * 役割:
+ * 自分の出品を販売中/売却済みに分け、編集や取引状況確認へつなげる画面です。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -19,44 +32,80 @@ import {
   stringifyImageUrls,
 } from '../utils';
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Promise<void> }) {
   // 編集モードのON/OFFです。販売中の商品だけ編集可能にします。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isEditing, setIsEditing] = useState(false);
 
   // 編集フォームの入力値です。初期値は現在の商品情報から作ります。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [title, setTitle] = useState(item.title);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [category, setCategory] = useState(item.category);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [conditionText, setConditionText] = useState(item.conditionText);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [priceInput, setPriceInput] = useState(String(item.priceYen));
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [imageUrls, setImageUrls] = useState<string[]>(() => parseImageUrls(item.imageUrl));
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [description, setDescription] = useState(item.description);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [deliveryMethod, setDeliveryMethod] = useState(item.deliveryMethod);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shippingDays, setShippingDays] = useState(String(item.shippingDays));
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [shipFromRegion, setShipFromRegion] = useState(item.shipFromRegion);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [size, setSize] = useState(item.size || '');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [color, setColor] = useState(item.color || '');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [tags, setTags] = useState(item.tags || '');
 
   // 画像ファイル入力をリセットするためのkeyです。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [imageInputKey, setImageInputKey] = useState(0);
 
   // 画像変換中や保存エラーを画面へ出します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isImageConverting, setIsImageConverting] = useState(false);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
 
   // sold/canceled の商品は情報改変を避けるため編集・キャンセル不可にします。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const canEdit = item.status === 'available';
 
   // 取引の次アクションを出品者に提示します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const next = nextPurchaseStep(item.purchaseStatus);
 
   // 親一覧の再取得で item が更新されたとき、編集フォームも最新の値に同期します。
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
     if (isEditing) return;
     resetEditForm(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.updatedAt, item.imageUrl, item.status]);
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function clearErrorOnEdit() {
     // バリデーションエラーは、入力を直した時点で消します。
     // これにより「発送元の地域を入力してください」が解決後も残る問題を防ぎます。
@@ -65,11 +114,13 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
 
   async function onImageFileChange(event: ChangeEvent<HTMLInputElement>) {
     // 出品時と同じく、ファイルアプリから選んだ複数画像をData URLへ圧縮変換します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
     setError('');
     setIsImageConverting(true);
     try {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const converted = await Promise.all(files.map((file) => fileToMediaDataUrl(file)));
       setImageUrls((current) => [...current, ...converted]);
     } catch (e) {
@@ -80,6 +131,7 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
     }
   }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function removeImage(index: number) {
     // 登録済み画像や誤選択した画像を、1枚単位で削除します。
     clearErrorOnEdit();
@@ -87,6 +139,7 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
     setImageInputKey((current) => current + 1);
   }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function resetEditForm(close = true) {
     // 編集を取り消した場合は、商品データの値に戻します。
     setTitle(item.title);
@@ -133,7 +186,9 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
     // 編集内容を検証してから、PUT /api/items/:id へ送ります。
     event.preventDefault();
     setError('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const priceYen = Number(priceInput);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const days = Number(shippingDays);
     if (!title.trim() || !description.trim()) {
       setError('商品名と商品説明を入力してください');
@@ -170,6 +225,7 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
     }
   }
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const representativeImage = firstImageUrl(item.imageUrl);
 
   return (
@@ -252,11 +308,18 @@ function EditableItemCard({ item, onChanged }: { item: Item; onChanged: () => Pr
   );
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function MyItemsPage() {
   // 出品履歴一覧です。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [items, setItems] = useState<Item[]>([]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [query, setQuery] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [searchParams] = useSearchParams();
 
   async function load() {
@@ -268,16 +331,23 @@ export function MyItemsPage() {
     }
   }
 
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, []);
 
   // 「数学」⇔「すうがく」、「ギター」⇔「ぎたー」などを searchUtils で柔軟に判定します。
   // 検索後に左右2列へ分けることで、検索対象としては全商品を保ちながら、表示は取引状態ごとに整理します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const filtered = useMemo(() => items.filter((item) => fuzzyIncludes(itemSearchText(item), query)), [items, query]);
 
   // Available列は、売れ残り期間が長いものを上に出すため、更新時刻が古い順に並べます。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const availableItems = useMemo(() => filtered.filter((item) => item.status === 'available').sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()), [filtered]);
 
   // SOLD列は、直近の取引確認をしやすくするため、更新時刻が新しい順に並べます。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const soldItems = useMemo(() => filtered.filter((item) => item.status === 'sold').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [filtered]);
 
   return (

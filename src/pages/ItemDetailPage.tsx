@@ -1,4 +1,17 @@
 /**
+ * ファイル概要: hackathon-frontend/src/pages/ItemDetailPage.tsx
+ *
+ * 役割:
+ * 商品詳細、公開コメント、価格交渉アシスタント、非公開DM、購入導線を統合する画面です。
+ *
+ * 読み方の目安:
+ * 1. importで依存しているAPI、型、ユーティリティを確認します。
+ * 2. 型定義や定数は、画面に出るデータの形や選択肢を表します。
+ * 3. Reactコンポーネントでは、useStateが画面状態、useEffectがAPI取得や副作用、イベント関数がユーザー操作を表します。
+ * 4. JSXのclassNameは src/styles.css と対応し、UI/UXの一貫性を保つための入口になります。
+ *
+ */
+/**
  * 商品詳細ページ。
  *
  * 複数画像カルーセル、購入前AIチェック、AI質問応答、公開コメント、非公開DM、
@@ -15,21 +28,30 @@ import { useI18n, translateKnownValue } from '../i18n';
 import { TranslatedText } from '../TranslatedText';
 import { formatDate, formatYen, isVideoUrl, nextPurchaseStep, parseImageUrls, purchaseStatusLabel, ratingStars, safeNumber, statusLabel } from '../utils';
 
+// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 type Thread = { parent: Message; replies: Message[] };
+// 【詳細コメント】このtype宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 type PrivateThread = { parent: PrivateMessage; replies: PrivateMessage[] };
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function buildThreads(messages: Message[]): Thread[] {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const parents = messages.filter((m) => !m.parentMessageId);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const replies = messages.filter((m) => m.parentMessageId);
   return parents.map((p) => ({ parent: p, replies: replies.filter((r) => r.parentMessageId === p.id) }));
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function buildPrivateThreads(messages: PrivateMessage[]): PrivateThread[] {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const parents = messages.filter((m) => !m.parentMessageId);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const replies = messages.filter((m) => m.parentMessageId);
   return parents.map((p) => ({ parent: p, replies: replies.filter((r) => r.parentMessageId === p.id) }));
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function CommentBox({ message, isReply, canDelete, onDelete }: { message: Message; isReply?: boolean; canDelete?: boolean; onDelete?: () => void }) {
   // 公開コメントの表示時刻は createdAt を使います。
   // 返信が追加されたときに親コメントの updatedAt をスレッド並び替え用に更新するため、
@@ -37,13 +59,16 @@ function CommentBox({ message, isReply, canDelete, onDelete }: { message: Messag
   return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.isSeller ? 'sellerMessage' : ''}`}><div className="messageHeader"><div className="messageAuthorRow"><strong className={message.isSeller ? 'sellerName' : ''}>{message.senderName}</strong>{message.isSeller && <span className="sellerBadge">出品者</span>}</div><span className="muted">{formatDate(message.createdAt)}</span>{canDelete && <button type="button" className="smallDangerButton" onClick={onDelete}>削除</button>}</div><p>{message.body}</p></div>;
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function PrivateMessageBox({ message, currentUserId, isReply }: { message: PrivateMessage; currentUserId: number; isReply?: boolean }) {
   return <div className={`message ${isReply ? 'replyMessage' : ''} ${message.senderId === currentUserId ? 'ownPrivateMessage' : ''}`}><div className="messageHeader"><strong>{message.senderName}</strong><span className="muted">{formatDate(message.createdAt)}</span></div><p>{message.body}</p></div>;
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 function buildSmartAssist(item: Item): string[] {
   // 外部AI APIが使えない場面でも、商品情報から購入判断の観点を即時提示します。
   // ハッカソンのデモでは、出品文生成だけでなく「購入前の不安を減らすAI的支援」として見せられます。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const hints: string[] = [];
   if (item.status === 'available') hints.push('現在購入可能です。');
   if (item.shippingDays <= 1) hints.push('発送までが早めの商品です。');
@@ -54,45 +79,93 @@ function buildSmartAssist(item: Item): string[] {
   return hints.length > 0 ? hints : ['商品説明、状態、出品者評価を確認して購入判断してください。'];
 }
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
 export function ItemDetailPage() {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { id } = useParams();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const itemId = Number(id);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { user } = useAuth();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const { lang, t } = useI18n();
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [item, setItem] = useState<Item | null>(null);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [question, setQuestion] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [aiAnswer, setAiAnswer] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [aiAnswerNotice, setAiAnswerNotice] = useState('');
   // 価格交渉アシスタントの希望金額入力です。購入検討者は『この金額でお願いしたい』、出品者は『この金額なら承諾/断る』の判断材料として使います。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [negotiationPrice, setNegotiationPrice] = useState('');
   // AIが生成した価格交渉メッセージの本文です。公開コメントやDMへそのまま貼れるよう、丁寧な文面を返します。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [negotiationText, setNegotiationText] = useState('');
   // 外部AIが使えずローカル生成へ落ちた場合などの補足表示です。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [negotiationNotice, setNegotiationNotice] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [analysis, setAnalysis] = useState<ItemAIAnalysis | null>(null);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isAskingAI, setIsAskingAI] = useState(false);
   // 価格交渉文面の生成中フラグです。二重送信を防ぎ、ボタン文言も切り替えます。
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isNegotiating, setIsNegotiating] = useState(false);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [messages, setMessages] = useState<Message[]>([]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [commentBody, setCommentBody] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [privateBody, setPrivateBody] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [replyBodies, setReplyBodies] = useState<Record<number, string>>({});
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const [privateReplyBodies, setPrivateReplyBodies] = useState<Record<number, string>>({});
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isChecked, setIsChecked] = useState(false);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [error, setError] = useState('');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [imageBroken, setImageBroken] = useState(false);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【React状態】useStateは、ユーザー操作やAPI取得結果に応じて画面を書き換えるための状態を保持します。
   const [isSellerBlocked, setIsSellerBlocked] = useState(false);
 
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const threads = useMemo(() => buildThreads(messages), [messages]);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
+  // 【計算のメモ化】useMemoは、入力が変わらない限り計算結果を再利用し、不要な再計算を抑えます。
   const privateThreads = useMemo(() => buildPrivateThreads(privateMessages), [privateMessages]);
 
   async function load() {
     if (!itemId) return;
     setError('');
     try {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const [itemData, messageData] = await Promise.all([itemApi.get(itemId), messageApi.list(itemId).catch(() => [])]);
       setItem(itemData);
       setMessages(messageData);
@@ -103,6 +176,7 @@ export function ItemDetailPage() {
         setPrivateMessages(await messageApi.listPrivate(itemId).catch(() => []));
         if (user.id !== itemData.sellerId) {
           setIsChecked((await checklistApi.status(itemId).catch(() => ({ checked: false }))).checked);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
           const blocks = await meApi.blocks().catch(() => []);
           setIsSellerBlocked(blocks.some((b) => b.blockedId === itemData.sellerId));
         } else {
@@ -116,8 +190,10 @@ export function ItemDetailPage() {
     } catch (e) { setError(e instanceof Error ? e.message : '商品取得に失敗しました'); }
   }
 
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => { load(); }, [itemId, user?.id]);
 
+  // 【副作用】useEffectは、画面表示後のAPI取得、イベント登録、タイマー管理などReact外部との接続点です。
   useEffect(() => {
     // 商品が切り替わった場合は、画像カルーセルを必ず1枚目に戻します。
     setSelectedImageIndex(0);
@@ -157,6 +233,7 @@ export function ItemDetailPage() {
     // そこで希望金額と商品文脈をAIへ渡し、角が立ちにくい承諾・相談・お断りの文面を生成します。
     event.preventDefault();
     if (!item) return;
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
     const desiredPrice = Number(negotiationPrice);
     if (!Number.isInteger(desiredPrice) || desiredPrice <= 0) {
       setError('希望金額を1円以上の整数で入力してください');
@@ -167,6 +244,7 @@ export function ItemDetailPage() {
     setNegotiationNotice('');
     setIsNegotiating(true);
     try {
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
       const result = await itemApi.negotiationAssist(item.id, desiredPrice);
       setNegotiationText(result.text);
       setNegotiationNotice(result.notice ?? '');
@@ -210,14 +288,22 @@ export function ItemDetailPage() {
   }
 
   if (!item) return <p>読み込み中...</p>;
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const isOwnItem = Boolean(user && user.id === item.sellerId);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const canPurchase = Boolean(user && item.status === 'available' && !isOwnItem);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const canUseChecklist = Boolean(user && !isOwnItem && item.status !== 'canceled');
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const imageUrls = parseImageUrls(item.imageUrl);
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const safeSelectedImageIndex = imageUrls.length > 0 ? selectedImageIndex % imageUrls.length : 0;
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const selectedImage = imageUrls.length > 0 ? imageUrls[safeSelectedImageIndex] : '';
+// 【詳細コメント】このconst宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   const nextStep = nextPurchaseStep(item.purchaseStatus);
 
+// 【詳細コメント】このfunction宣言は、画面状態・API契約・表示ロジックのいずれかを支える要素です。変更時は呼び出し元と型の対応を合わせて確認します。
   function moveImage(delta: number) {
     // 最後の画像の次は1枚目へ、1枚目の前は最後へ移動する巡回表示です。
     if (imageUrls.length === 0) return;
